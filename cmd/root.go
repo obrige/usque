@@ -3,7 +3,7 @@ package cmd
 import (
 	"log"
 
-	"github.com/obrige/usque-android/config"
+	"github.com/obrige/usque/config"
 	"github.com/spf13/cobra"
 )
 

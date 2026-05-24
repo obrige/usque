@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/obrige/usque-android/cmd"
+	"github.com/obrige/usque/cmd"
 )
 
 func main() {

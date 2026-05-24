@@ -16,10 +16,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obrige/usque-android/api"
-	"github.com/obrige/usque-android/config"
-	"github.com/obrige/usque-android/internal"
-	"github.com/obrige/usque-android/models"
+	"github.com/obrige/usque/api"
+	"github.com/obrige/usque/config"
+	"github.com/obrige/usque/internal"
+	"github.com/obrige/usque/models"
 	"github.com/things-go/go-socks5"
 	"golang.zx2c4.com/wireguard/tun/netstack"
 )

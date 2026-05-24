@@ -1,4 +1,4 @@
-module github.com/obrige/usque-android
+module github.com/obrige/usque
 
 go 1.24.1
 

@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/obrige/usque-android/internal"
-	"github.com/obrige/usque-android/models"
+	"github.com/obrige/usque/internal"
+	"github.com/obrige/usque/models"
 )
 
 // Register creates a new user account by registering a WireGuard public key.
