@@ -43,6 +43,7 @@ class UsqueVpnService : VpnService() {
         var totalRx = 0L
         var totalTx = 0L
         @Volatile var proxyReady = false
+        @Volatile var exitIp: String = ""
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
@@ -110,6 +111,10 @@ class UsqueVpnService : VpnService() {
             return START_NOT_STICKY
         }
         val vpnIpv6 = Usqueandroid.getAssignedIPv6(configPath)
+
+        // ★ 先把 endpoint IP 存好，供 MainActivity 做 geo 查询
+        exitIp = prefs.getString("endpoint_v4",
+            Usqueandroid.getDefaultEndpoint(configPath)) ?: ""
 
         try {
             val builder = Builder().setSession("Usque").setMtu(1280)
@@ -191,13 +196,10 @@ class UsqueVpnService : VpnService() {
             } catch (_: Exception) { }
             if (attempt < 6) Thread.sleep(600)
         }
-        Log.w(TAG, "未找到 VPN Network，代理将走直连")
+        Log.w(TAG, "未找到 VPN Network")
         return null
     }
 
-    // ═══════════════════════════════════════════
-    //  localhost HTTP 正向代理 (127.0.0.1:58080)
-    // ═══════════════════════════════════════════
     private fun startHttpProxy() {
         proxyThread = thread(name = "usque-proxy") {
             try {
@@ -233,15 +235,15 @@ class UsqueVpnService : VpnService() {
             if (parts.size < 3) return
             val target = parts[1]
 
-            // 跳过请求头
             var line: String?
             do { line = reader.readLine() } while (line != null && line.isNotEmpty())
 
-            // 发起真实 HTTP 请求 — 优先绑 VPN Network, 回退直连
             val url = URL(target)
             val conn: HttpURLConnection = if (vpnNetwork != null) {
+                Log.d(TAG, "代理请求走 VPN Network: $target")
                 vpnNetwork!!.openConnection(url) as HttpURLConnection
             } else {
+                Log.d(TAG, "代理请求走直连: $target")
                 url.openConnection() as HttpURLConnection
             }
             conn.connectTimeout = 10000
@@ -262,13 +264,13 @@ class UsqueVpnService : VpnService() {
             writer.write(body)
             writer.flush()
             conn.disconnect()
-        } catch (_: Exception) { }
-        finally { try { client.close() } catch (_: Exception) {} }
+        } catch (e: Exception) {
+            Log.e(TAG, "代理请求失败: ${e.message}")
+        } finally {
+            try { client.close() } catch (_: Exception) {}
+        }
     }
 
-    // ═══════════════════════════════════════════
-    //  通知 / 网速 / 国旗
-    // ═══════════════════════════════════════════
     private fun flagEmoji(code: String): String {
         if (code.length != 2) return ""
         return try {
@@ -359,6 +361,7 @@ class UsqueVpnService : VpnService() {
         try { vpnInterface?.close() } catch (_: Exception) {}
         vpnInterface = null
         vpnNetwork = null
+        exitIp = ""
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
         totalRx = 0L
