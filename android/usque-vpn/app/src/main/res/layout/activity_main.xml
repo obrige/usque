@@ -80,16 +80,16 @@
             android:fontFamily="sans-serif" />
 
         <RelativeLayout
-            android:layout_width="260dp"
-            android:layout_height="260dp"
+            android:layout_width="320dp"
+            android:layout_height="320dp"
             android:layout_marginBottom="32dp"
             android:clipChildren="false"
             android:clipToPadding="false">
 
             <View
                 android:id="@+id/pulse_ring_outer"
-                android:layout_width="260dp"
-                android:layout_height="260dp"
+                android:layout_width="320dp"
+                android:layout_height="320dp"
                 android:layout_centerInParent="true"
                 android:background="@drawable/pulse_ring_outer" />
 
