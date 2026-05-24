@@ -210,7 +210,7 @@ class MainActivity : Activity() {
     }
 
     // ═══════════════════════════════════════════
-    //  通过指定 Network 发起 HTTP GET（绑定 VPN 网卡，欺骗系统以为是隧道内流量）
+    //  通过指定 Network 发起 HTTP GET
     // ═══════════════════════════════════════════
     private fun httpGetViaNetwork(urlStr: String, network: Network): String? {
         val url = URL(urlStr)
@@ -227,12 +227,11 @@ class MainActivity : Activity() {
     }
 
     // ═══════════════════════════════════════════
-    //  IP 查询 — VPN Network 直绑 → 代理 → 直连 → endpoint
+    //  IP 查询 — 仅走 VPN Network，失败显示 --
     // ═══════════════════════════════════════════
     private fun fetchIpLocation() {
         thread {
             var success = false
-            // 第 1 步：直接绑 VPN Network 查出口 IP（绕过 addDisallowedApplication）
             if (UsqueVpnService.isRunning) {
                 val vpnNet = findVpnNetwork()
                 if (vpnNet != null) {
@@ -249,55 +248,17 @@ class MainActivity : Activity() {
                     }
                 }
             }
-            // 第 2 步：走 localhost 代理 (58080)
-            if (!success && UsqueVpnService.proxyReady) {
-                for (attempt in 1..2) {
-                    try {
-                        val json = httpGet(IP_CHECK_URL, viaProxy = true)
-                        if (json != null) {
-                            applyGeoJson(json)
-                            success = true
-                            break
-                        }
-                    } catch (_: Exception) { }
-                    if (attempt < 2) Thread.sleep(1500)
-                }
-            }
-            // 第 3 步：直连
             if (!success) {
-                for (attempt in 1..2) {
-                    try {
-                        val json = httpGet(IP_CHECK_URL, viaProxy = false)
-                        if (json != null) {
-                            applyGeoJson(json)
-                            success = true
-                            break
-                        }
-                    } catch (_: Exception) { }
-                    if (attempt < 2) Thread.sleep(1000)
+                runOnUiThread {
+                    countryCode = ""; countryName = ""
+                    countryText.text = String(Character.toChars(0x1F310))
+                    countryLabel.text = "--"
+                    toolbarFlag.text = "\uD83C\uDF10"
+                    toolbarLocation.text = "--"
+                    exitIpText.text = "--"
+                    ipVersionText.text = "--"
                 }
             }
-            // 第 4 步：用 endpoint IP 查 ip-api.com
-            if (!success) fetchGeoByEndpoint()
-        }
-    }
-
-    private fun httpGet(urlStr: String, viaProxy: Boolean): String? {
-        val url = URL(urlStr)
-        val conn = if (viaProxy) {
-            val p = Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
-            url.openConnection(p) as HttpURLConnection
-        } else {
-            url.openConnection() as HttpURLConnection
-        }
-        conn.connectTimeout = 10000
-        conn.readTimeout = 10000
-        conn.requestMethod = "GET"
-        conn.setRequestProperty("User-Agent", "Usque/1.0")
-        return if (conn.responseCode == 200) {
-            conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
-        } else {
-            conn.disconnect(); null
         }
     }
 
@@ -316,34 +277,6 @@ class MainActivity : Activity() {
             toolbarLocation.text = countryName
             if (ip.isNotEmpty()) exitIpText.text = ip
             ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
-        }
-    }
-
-    private fun fetchGeoByEndpoint() {
-        val epIp = getStr(KEY_ENDPOINT_V4,
-            getRegStr("") { Usqueandroid.getDefaultEndpoint(it) })
-        if (epIp.isEmpty()) return
-        thread {
-            try {
-                val json = httpGet("$GEO_API/$epIp?fields=country,countryCode,city", viaProxy = false)
-                if (json != null) {
-                    val j = JSONObject(json)
-                    val co = j.optString("countryCode", "")
-                    val ci = j.optString("city", "")
-                    val cn = j.optString("country", "")
-                    countryCode = co
-                    countryName = if (ci.isNotEmpty()) ci else cn
-                    runOnUiThread {
-                        val flag = flagEmoji(co)
-                        countryText.text = flag
-                        countryLabel.text = countryName
-                        toolbarFlag.text = flag
-                        toolbarLocation.text = countryName
-                        exitIpText.text = epIp
-                        ipVersionText.text = if (epIp.contains(":")) "IPv6" else "IPv4"
-                    }
-                }
-            } catch (_: Exception) { }
         }
     }
 
