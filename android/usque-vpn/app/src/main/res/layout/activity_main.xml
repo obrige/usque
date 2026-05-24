@@ -18,7 +18,10 @@
         android:gravity="center_vertical"
         android:paddingStart="20dp"
         android:paddingEnd="12dp"
-        android:paddingTop="14dp">
+        android:paddingTop="18dp"
+        android:paddingBottom="8dp"
+        android:minHeight="56dp"
+        android:background="#080c1a">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -71,7 +74,7 @@
         android:gravity="center_horizontal"
         android:layout_gravity="center"
         android:layout_marginTop="-40dp"
-        android:paddingHorizontal="14dp">
+        android:paddingHorizontal="28dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -143,7 +146,7 @@
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="76dp"
+                    android:layout_height="80dp"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -158,22 +161,21 @@
                         android:textSize="30sp" />
                     <TextView
                         android:id="@+id/country_label"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         android:textStyle="bold"
                         android:textColor="#e8ecf4"
                         android:layout_marginTop="6dp"
-                        android:gravity="center"
-                        android:maxLines="2"
+                        android:maxLines="1"
                         android:ellipsize="end" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="76dp"
-                    android:layout_weight="1.8"
+                    android:layout_height="80dp"
+                    android:layout_weight="1.2"
                     android:orientation="vertical"
                     android:gravity="center"
                     android:padding="12dp"
@@ -181,16 +183,13 @@
                     android:layout_marginStart="6dp">
                     <TextView
                         android:id="@+id/exit_ip_text"
-                        android:layout_width="match_parent"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="15sp"
+                        android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="#00d4aa"
-                        android:fontFamily="monospace"
-                        android:gravity="center"
-                        android:maxLines="1"
-                        android:ellipsize="end" />
+                        android:fontFamily="monospace" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -214,7 +213,7 @@
                     android:gravity="center"
                     android:padding="8dp"
                     android:background="@drawable/info_card_bg"
-                    android:layout_marginEnd="5dp">
+                    android:layout_marginEnd="6dp">
                     <TextView
                         android:id="@+id/latency_text"
                         android:layout_width="wrap_content"
@@ -240,8 +239,8 @@
                     android:gravity="center"
                     android:padding="8dp"
                     android:background="@drawable/info_card_bg"
-                    android:layout_marginStart="5dp"
-                    android:layout_marginEnd="5dp">
+                    android:layout_marginStart="6dp"
+                    android:layout_marginEnd="6dp">
                     <TextView
                         android:id="@+id/ip_version_text"
                         android:layout_width="wrap_content"
@@ -267,7 +266,7 @@
                     android:gravity="center"
                     android:padding="8dp"
                     android:background="@drawable/info_card_bg"
-                    android:layout_marginStart="5dp">
+                    android:layout_marginStart="6dp">
                     <TextView
                         android:id="@+id/total_data_text"
                         android:layout_width="wrap_content"
