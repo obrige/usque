@@ -12,13 +12,18 @@ jobs:
       - name: Checkout current repo
         uses: actions/checkout@v4
 
-      - name: Clone original repo
-        run: git clone --depth 1 https://github.com/obrige/usque-android.git /tmp/original
+      - name: Clone original repo at commit 160bc27
+        run: |
+          git clone https://github.com/obrige/usque-android.git /tmp/original
+          cd /tmp/original
+          git checkout 160bc27
+          ls -la android/usque-vpn/app/src/main/kotlin/com/abobo/usque/
 
       - name: Copy missing Kotlin sources
         run: |
-          mkdir -p android/usque-vpn/app/src/main/kotlin
-          cp -r /tmp/original/android/usque-vpn/app/src/main/kotlin/* android/usque-vpn/app/src/main/kotlin/
+          mkdir -p android/usque-vpn/app/src/main/kotlin/com/abobo/usque
+          cp /tmp/original/android/usque-vpn/app/src/main/kotlin/com/abobo/usque/*.kt android/usque-vpn/app/src/main/kotlin/com/abobo/usque/
+          ls -la android/usque-vpn/app/src/main/kotlin/com/abobo/usque/
 
       - name: Commit and push
         run: |
