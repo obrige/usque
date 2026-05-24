@@ -86,8 +86,6 @@ class MainActivity : Activity() {
     private var lastRx = 0L
     private var lastTx = 0L
     private var lastSpeedTime = 0L
-    private var totalRxBase = 0L
-    private var totalTxBase = 0L
 
     data class PresetConfig(
         val name: String, val sni: String,
@@ -250,9 +248,7 @@ class MainActivity : Activity() {
 
     private fun startSpeedUpdater() {
         stopSpeedUpdater()
-        totalRxBase = UsqueVpnService.totalRx
-        totalTxBase = UsqueVpnService.totalTx
-        lastRx = totalRxBase; lastTx = totalTxBase
+        lastRx = UsqueVpnService.totalRx; lastTx = UsqueVpnService.totalTx
         speedUpdater = object : Runnable {
             override fun run() {
                 if (UsqueVpnService.isRunning) {
@@ -267,8 +263,7 @@ class MainActivity : Activity() {
                         }
                     }
                     lastRx = rx; lastTx = tx; lastSpeedTime = n
-                    totalDataText.text = "↓" + fmtCompact(rx - totalRxBase) +
-                        "\n↑" + fmtCompact(tx - totalTxBase)
+                    totalDataText.text = "↓" + fmtCompact(rx) + "\n↑" + fmtCompact(tx)
                 }
                 handler.postDelayed(this, 1000)
             }
@@ -803,7 +798,6 @@ class MainActivity : Activity() {
             latencyText.text = "-- ms"
             totalDataText.text = "0 B"; currentPresetText.text = ""
             stopSpeedUpdater(); stopLatencyUpdater(); stopDurationUpdater()
-            lastRx = 0; lastTx = 0; lastSpeedTime = 0
         }
     }
 }
