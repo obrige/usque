@@ -344,7 +344,7 @@ func StartProxy(configPath, mode, bindAddr string, port int, username, password 
 	proxyCancel = cancel
 	go api.MaintainTunnel(ctx, tlsCfg, 30*time.Second, 1242, endpoint,
 		api.NewNetstackAdapter(tunDev), 1280, time.Second)
-	addr := fmt.Sprintf("%s:%d", bindAddr, port)
+	endpoint := &net.UDPAddr{IP: net.ParseIP(host), Port: epPort}
 	var listener net.Listener
 	if mode == "socks5" {
 		listener, err = startSocks5(addr, tunNet, dnsAddrs, username, password)
