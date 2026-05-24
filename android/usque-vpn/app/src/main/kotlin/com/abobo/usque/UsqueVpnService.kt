@@ -177,6 +177,7 @@ class UsqueVpnService : VpnService() {
         return START_STICKY
     }
 
+    // 启动时查找（多试几次）
     private fun findVpnNetwork(): Network? {
         for (attempt in 1..6) {
             try {
@@ -193,6 +194,28 @@ class UsqueVpnService : VpnService() {
         }
         Log.w(TAG, "未找到 VPN Network，代理将走直连")
         return null
+    }
+
+    // 每次请求时快速查找（用于代理回退）
+    private fun findVpnNetworkLazy(): Network? {
+        // 先复用缓存的
+        vpnNetwork?.let { return it }
+        // 快速尝试 2 次
+        for (attempt in 1..2) {
+            try {
+                val cm = getSystemService(ConnectivityManager::class.java)
+                for (net in cm.allNetworks) {
+                    val caps = cm.getNetworkCapabilities(net)
+                    if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) {
+                        vpnNetwork = net
+                        Log.i(TAG, "Lazy 找到 VPN Network: $net")
+                        return net
+                    }
+                }
+            } catch (_: Exception) { }
+            if (attempt < 2) Thread.sleep(500)
+        }
+        return vpnNetwork
     }
 
     // ═══════════════════════════════════════════
@@ -237,10 +260,11 @@ class UsqueVpnService : VpnService() {
             var line: String?
             do { line = reader.readLine() } while (line != null && line.isNotEmpty())
 
-            // 发起真实 HTTP 请求 — 优先绑 VPN Network, 回退直连
+            // 发起真实 HTTP 请求 — 动态查找 VPN Network，优先走隧道
             val url = URL(target)
-            val conn: HttpURLConnection = if (vpnNetwork != null) {
-                vpnNetwork!!.openConnection(url) as HttpURLConnection
+            val net = findVpnNetworkLazy()
+            val conn: HttpURLConnection = if (net != null) {
+                net.openConnection(url) as HttpURLConnection
             } else {
                 url.openConnection() as HttpURLConnection
             }
