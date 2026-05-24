@@ -43,7 +43,7 @@ class UsqueVpnService : VpnService() {
         var totalRx = 0L
         var totalTx = 0L
         @Volatile var proxyReady = false
-        @Volatile var connectStartTime = 0
+        @Volatile var connectStartTime = 0L
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
