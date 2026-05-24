@@ -371,6 +371,7 @@ class UsqueVpnService : VpnService() {
         stopSelf()
         totalRx = 0L
         totalTx = 0L
+        connectStartTime = 0L
     }
 
     override fun onDestroy() {
