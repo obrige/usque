@@ -1,0 +1,29 @@
+name: API Import Kotlin Sources
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and create files via API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          REPO="${{ github.repository }}"
+          BASE="https://raw.githubusercontent.com/obrige/usque-android/160bc27"
+          DIR="android/usque-vpn/app/src/main/kotlin/com/abobo/usque"
+
+          for FILE in MainActivity.kt UsqueVpnService.kt; do
+            echo "Downloading $FILE..."
+            CONTENT=$(curl -sL "$BASE/$DIR/$FILE" | base64 -w0)
+            echo "Creating $FILE via API..."
+            gh api "/repos/$REPO/contents/$DIR/$FILE" \
+              -X PUT \
+              -f message="fix: add $FILE from original repo" \
+              -f content="$CONTENT" \
+              -f branch="main"
+          done
