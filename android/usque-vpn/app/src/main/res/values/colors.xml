@@ -1,4 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#6c5ce7</color>
+    <color name="ic_launcher_background">#00d4aa</color>
+    <color name="bg_dark">#0b0f1e</color>
+    <color name="bg_card">#161b30</color>
+    <color name="accent">#00d4aa</color>
+    <color name="connected">#00d4aa</color>
+    <color name="disconnected">#636e84</color>
+    <color name="speed_down">#00d4aa</color>
+    <color name="speed_up">#6c5ce7</color>
+    <color name="text_primary">#e8ecf4</color>
+    <color name="text_secondary">#8892b0</color>
+    <color name="divider">#1e2440</color>
 </resources>
