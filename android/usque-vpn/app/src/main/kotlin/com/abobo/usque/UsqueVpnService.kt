@@ -43,6 +43,7 @@ class UsqueVpnService : VpnService() {
         var totalRx = 0L
         var totalTx = 0L
         @Volatile var proxyReady = false
+        @Volatile var latestLatency = "-- ms"
         @Volatile var connectStartTime = 0L
     }
 
@@ -336,6 +337,7 @@ class UsqueVpnService : VpnService() {
                     lastRx = rx
                     lastTx = tx
                     lastSpeedTime = now
+                    status += "  ·  $latestLatency"
                     notificationManager?.notify(NOTIFICATION_ID, buildNotification(status))
                 }
                 handler.postDelayed(this, 2000)
