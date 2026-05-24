@@ -191,10 +191,15 @@ class MainActivity : Activity() {
     }
 
     // ═══════════════════════════════════════════
-    //  IP 查询 — 走 localhost 代理 → 代理动态绑 VPN Network → 隧道出口
+    //  IP 查询 — 先等代理就绪，再走代理 → 隧道出口
     // ═══════════════════════════════════════════
     private fun fetchIpLocation() {
         thread {
+            // 等代理就绪（最多等 10 秒）
+            for (wait in 1..10) {
+                if (UsqueVpnService.proxyReady) break
+                Thread.sleep(1000)
+            }
             var success = false
             if (UsqueVpnService.proxyReady) {
                 for (attempt in 1..5) {
