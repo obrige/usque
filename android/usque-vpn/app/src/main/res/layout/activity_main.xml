@@ -7,15 +7,15 @@
     android:clipToPadding="false">
 
     <FrameLayout
-        android:layout_width="260dp"
-        android:layout_height="260dp"
+        android:layout_width="300dp"
+        android:layout_height="300dp"
         android:layout_gravity="center_horizontal|top"
-        android:layout_marginTop="-30dp"
+        android:layout_marginTop="-50dp"
         android:clipChildren="false">
 
         <View
-            android:layout_width="260dp"
-            android:layout_height="260dp"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
             android:background="@drawable/bg_glow_top" />
     </FrameLayout>
 
@@ -66,7 +66,7 @@
         android:orientation="vertical"
         android:gravity="center_horizontal"
         android:layout_gravity="center"
-        android:layout_marginTop="-40dp"
+        android:layout_marginTop="-20dp"
         android:paddingHorizontal="16dp">
 
         <TextView
@@ -76,33 +76,34 @@
             android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="#4a5578"
-            android:layout_marginBottom="26dp"
+            android:layout_marginBottom="40dp"
             android:fontFamily="sans-serif" />
 
         <RelativeLayout
-            android:layout_width="160dp"
-            android:layout_height="160dp"
-            android:layout_marginBottom="24dp"
-            android:clipChildren="false">
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginBottom="32dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
             <View
                 android:id="@+id/pulse_ring_outer"
-                android:layout_width="160dp"
-                android:layout_height="160dp"
+                android:layout_width="200dp"
+                android:layout_height="200dp"
                 android:layout_centerInParent="true"
                 android:background="@drawable/pulse_ring_outer" />
 
             <View
                 android:id="@+id/pulse_ring"
-                android:layout_width="136dp"
-                android:layout_height="136dp"
+                android:layout_width="170dp"
+                android:layout_height="170dp"
                 android:layout_centerInParent="true"
                 android:background="@drawable/pulse_ring" />
 
             <Button
                 android:id="@+id/connect_button"
-                android:layout_width="72dp"
-                android:layout_height="72dp"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
                 android:layout_centerInParent="true"
                 android:text="连接"
                 android:textSize="18sp"
@@ -110,7 +111,7 @@
                 android:textColor="#ffffff"
                 android:background="@drawable/connect_button_bg"
                 android:stateListAnimator="@null"
-                android:elevation="8dp" />
+                android:elevation="10dp" />
         </RelativeLayout>
 
         <TextView
@@ -121,7 +122,7 @@
             android:textSize="17sp"
             android:textColor="#636e84"
             android:letterSpacing="0.02"
-            android:layout_marginBottom="20dp" />
+            android:layout_marginBottom="24dp" />
 
         <LinearLayout
             android:id="@+id/info_row"
