@@ -96,8 +96,6 @@ class UsqueVpnService : VpnService() {
                 return START_NOT_STICKY
             }
             prefs.edit()
-                .putString("endpoint_v4", Usqueandroid.getDefaultEndpoint(configPath))
-                .putString("endpoint_v6", Usqueandroid.getAssignedIPv6(configPath))
                 .putString("sni", Usqueandroid.getSNI())
                 .putString("private_key", Usqueandroid.getPrivateKeyB64(configPath))
                 .putString("endpoint_pubkey", Usqueandroid.getEndpointPubKeyPEM(configPath))
