@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Usque 首页布局 — 智能宽度优化版
+    · 光晕花纹 260dp，适配 320dp+ 所有屏幕不被截断
+    · 主内容区 match_parent + 24dp 水平内边距，大屏不散、小屏不挤
+    · 信息卡片自适应权重分配，文字截断保护
+    · 深色主题 #0b0f1e，脉冲动画连接按钮居中
+-->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0b0f1e">
 
+    <!-- ═══ 顶部光晕花纹 ═══ -->
     <View
-        android:layout_width="280dp"
-        android:layout_height="280dp"
+        android:layout_width="260dp"
+        android:layout_height="260dp"
         android:layout_gravity="center_horizontal|top"
         android:layout_marginTop="-30dp"
         android:background="@drawable/bg_glow_top" />
 
+    <!-- ═══ 顶部状态栏：位置 + 国旗 ═══ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -67,6 +76,7 @@
             android:tint="#8892b0" />
     </LinearLayout>
 
+    <!-- ═══ 主内容区：居中式智能宽度 ═══ -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -74,8 +84,9 @@
         android:gravity="center_horizontal"
         android:layout_gravity="center"
         android:layout_marginTop="-40dp"
-        android:paddingHorizontal="28dp">
+        android:paddingHorizontal="24dp">
 
+        <!-- 品牌标签 -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -86,11 +97,13 @@
             android:layout_marginBottom="36dp"
             android:fontFamily="sans-serif" />
 
+        <!-- ═══ 连接按钮 + 脉冲动画环 ═══ -->
         <RelativeLayout
             android:layout_width="140dp"
             android:layout_height="140dp"
             android:layout_marginBottom="28dp">
 
+            <!-- 外环光晕 -->
             <View
                 android:id="@+id/pulse_ring_outer"
                 android:layout_width="140dp"
@@ -98,6 +111,7 @@
                 android:layout_centerInParent="true"
                 android:background="@drawable/pulse_ring_outer" />
 
+            <!-- 内环光晕 -->
             <View
                 android:id="@+id/pulse_ring"
                 android:layout_width="120dp"
@@ -105,6 +119,7 @@
                 android:layout_centerInParent="true"
                 android:background="@drawable/pulse_ring" />
 
+            <!-- 连接按钮 -->
             <Button
                 android:id="@+id/connect_button"
                 android:layout_width="60dp"
@@ -119,6 +134,7 @@
                 android:elevation="8dp" />
         </RelativeLayout>
 
+        <!-- 连接状态文字 -->
         <TextView
             android:id="@+id/status_text"
             android:layout_width="wrap_content"
@@ -129,6 +145,7 @@
             android:letterSpacing="0.02"
             android:layout_marginBottom="32dp" />
 
+        <!-- ═══ 信息卡片区：自适应网格 ═══ -->
         <LinearLayout
             android:id="@+id/info_row"
             android:layout_width="match_parent"
@@ -138,12 +155,14 @@
             android:visibility="gone"
             android:layout_marginBottom="12dp">
 
+            <!-- 第一行：国家 + 出口IP -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:layout_marginBottom="10dp">
 
+                <!-- 国旗 + 国家名 -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="80dp"
@@ -172,6 +191,7 @@
                         android:ellipsize="end" />
                 </LinearLayout>
 
+                <!-- 出口 IP -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="80dp"
@@ -189,7 +209,9 @@
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:textColor="#00d4aa"
-                        android:fontFamily="monospace" />
+                        android:fontFamily="monospace"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -200,11 +222,13 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- 第二行：延迟 + 协议 + 流量 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
+                <!-- 延迟 -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="60dp"
@@ -231,6 +255,7 @@
                         android:layout_marginTop="3dp" />
                 </LinearLayout>
 
+                <!-- 协议版本 -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="60dp"
@@ -258,6 +283,7 @@
                         android:layout_marginTop="3dp" />
                 </LinearLayout>
 
+                <!-- 流量统计 -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="60dp"
@@ -272,9 +298,11 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0 B"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         android:textStyle="bold"
-                        android:textColor="#e8ecf4" />
+                        android:textColor="#e8ecf4"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -286,6 +314,7 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- ═══ 实时网速条 ═══ -->
         <LinearLayout
             android:id="@+id/speed_row"
             android:layout_width="match_parent"
@@ -339,6 +368,7 @@
 
     </LinearLayout>
 
+    <!-- ═══ 底部预设栏 ═══ -->
     <LinearLayout
         android:id="@+id/preset_bar"
         android:layout_width="match_parent"
