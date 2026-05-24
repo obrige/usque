@@ -43,6 +43,7 @@ class UsqueVpnService : VpnService() {
         var totalRx = 0L
         var totalTx = 0L
         @Volatile var proxyReady = false
+        @Volatile var connectStartTime = 0
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
@@ -132,6 +133,7 @@ class UsqueVpnService : VpnService() {
             }
             outputStream = FileOutputStream(vpnInterface!!.fileDescriptor)
             isRunning = true
+            connectStartTime = System.currentTimeMillis()
             proxyReady = false
             totalRx = 0L
             totalTx = 0L
