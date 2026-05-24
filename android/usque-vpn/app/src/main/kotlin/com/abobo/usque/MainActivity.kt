@@ -192,24 +192,20 @@ class MainActivity : Activity() {
     private fun measureLatency() {
         thread {
             try {
-                val st: Long
-                val s: Socket
-                if (UsqueVpnService.proxyReady) {
-                    val p = Proxy(Proxy.Type.HTTP,
-                        InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
-                    s = Socket(p)
-                    st = System.currentTimeMillis()
-                    s.connect(InetSocketAddress("8.8.8.8", 53), 8000)
-                } else {
-                    s = Socket()
-                    st = System.currentTimeMillis()
-                    s.connect(InetSocketAddress("8.8.8.8", 53), 8000)
-                }
+                val s = Socket()
+                val st = System.currentTimeMillis()
+                s.connect(InetSocketAddress("8.8.8.8", 53), 8000)
                 val lat = System.currentTimeMillis() - st
                 s.close()
-                runOnUiThread { latencyText.text = "${lat} ms" }
+                runOnUiThread {
+                    latencyText.text = "${lat} ms"
+                    UsqueVpnService.latestLatency = "${lat} ms"
+                }
             } catch (_: Exception) {
-                runOnUiThread { latencyText.text = "超时" }
+                runOnUiThread {
+                    latencyText.text = "超时"
+                    UsqueVpnService.latestLatency = "超时"
+                }
             }
         }
     }
