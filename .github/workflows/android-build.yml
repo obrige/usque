@@ -1,9 +1,11 @@
 name: Build Android APK
 
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
 
 jobs:
   build-apk:
@@ -12,12 +14,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Fix module path
-        run: |
-          sed -i 's|github.com/obrige/usque-android|github.com/obrige/usque|g' go.mod
-          find . -name '*.go' -exec sed -i 's|github.com/obrige/usque-android|github.com/obrige/usque|g' {} +
-          cat go.mod | head -3
 
       - name: Setup Go
         uses: actions/setup-go@v5
