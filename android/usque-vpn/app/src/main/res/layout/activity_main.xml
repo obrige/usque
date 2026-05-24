@@ -67,6 +67,7 @@
             android:tint="#8892b0" />
     </LinearLayout>
 
+    <!-- ★ paddingHorizontal 12dp — 卡片更宽 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -74,7 +75,7 @@
         android:gravity="center_horizontal"
         android:layout_gravity="center"
         android:layout_marginTop="-40dp"
-        android:paddingHorizontal="28dp">
+        android:paddingHorizontal="12dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -129,6 +130,7 @@
             android:letterSpacing="0.02"
             android:layout_marginBottom="32dp" />
 
+        <!-- ★ 信息卡片 — 加宽，weight 重新分配 -->
         <LinearLayout
             android:id="@+id/info_row"
             android:layout_width="match_parent"
@@ -138,6 +140,7 @@
             android:visibility="gone"
             android:layout_marginBottom="12dp">
 
+            <!-- 上行: 国旗 + 出口 IP — weight 1:1.8 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -146,7 +149,7 @@
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="80dp"
+                    android:layout_height="82dp"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -161,21 +164,22 @@
                         android:textSize="30sp" />
                     <TextView
                         android:id="@+id/country_label"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="12sp"
+                        android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="#e8ecf4"
                         android:layout_marginTop="6dp"
-                        android:maxLines="1"
+                        android:gravity="center"
+                        android:maxLines="2"
                         android:ellipsize="end" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="80dp"
-                    android:layout_weight="1.2"
+                    android:layout_height="82dp"
+                    android:layout_weight="1.8"
                     android:orientation="vertical"
                     android:gravity="center"
                     android:padding="12dp"
@@ -183,13 +187,16 @@
                     android:layout_marginStart="6dp">
                     <TextView
                         android:id="@+id/exit_ip_text"
-                        android:layout_width="wrap_content"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="15sp"
                         android:textStyle="bold"
                         android:textColor="#00d4aa"
-                        android:fontFamily="monospace" />
+                        android:fontFamily="monospace"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:ellipsize="end" />
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -200,6 +207,7 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- 下行: 延迟 + 协议 + 流量 — 等宽 1:1:1 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -213,7 +221,7 @@
                     android:gravity="center"
                     android:padding="8dp"
                     android:background="@drawable/info_card_bg"
-                    android:layout_marginEnd="6dp">
+                    android:layout_marginEnd="5dp">
                     <TextView
                         android:id="@+id/latency_text"
                         android:layout_width="wrap_content"
@@ -239,8 +247,8 @@
                     android:gravity="center"
                     android:padding="8dp"
                     android:background="@drawable/info_card_bg"
-                    android:layout_marginStart="6dp"
-                    android:layout_marginEnd="6dp">
+                    android:layout_marginStart="5dp"
+                    android:layout_marginEnd="5dp">
                     <TextView
                         android:id="@+id/ip_version_text"
                         android:layout_width="wrap_content"
@@ -266,7 +274,7 @@
                     android:gravity="center"
                     android:padding="8dp"
                     android:background="@drawable/info_card_bg"
-                    android:layout_marginStart="6dp">
+                    android:layout_marginStart="5dp">
                     <TextView
                         android:id="@+id/total_data_text"
                         android:layout_width="wrap_content"
