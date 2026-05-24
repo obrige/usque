@@ -329,8 +329,8 @@ class UsqueVpnService : VpnService() {
                     if (lastSpeedTime > 0) {
                         val e = (now - lastSpeedTime) / 1000.0
                         if (e > 0) {
-                            status = "↓ ${fmt(((rx - lastRx) / e).toLong())}/s  ↑ ${
-                                fmt(((tx - lastTx) / e).toLong())
+                            status = "↓ ${fmt(((tx - lastTx) / e).toLong())}/s  ↑ ${
+                                fmt(((rx - lastRx) / e).toLong())
                             }/s"
                         }
                     }
