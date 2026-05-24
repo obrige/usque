@@ -190,53 +190,91 @@ class MainActivity : Activity() {
         } catch (_: Exception) { String(Character.toChars(0x1F310)) }
     }
 
-    // ═══════════════════════════════════════════
-    //  IP 查询 — 代理优先 → 直连 → endpoint fallback
-    // ═══════════════════════════════════════════
+    // ★ IP 查询 — 双路并行：endpoint geo（可靠）+ 代理 ors.de5.net（二次确认）
     private fun fetchIpLocation() {
-        thread {
-            var success = false
-            // 第 1 步：走 localhost 代理 (58080)
-            if (UsqueVpnService.proxyReady) {
-                for (attempt in 1..3) {
-                    try {
-                        val json = httpGet(IP_CHECK_URL, viaProxy = true)
-                        if (json != null) {
-                            applyGeoJson(json)
-                            success = true
-                            break
+        // 主路：用 endpoint IP 查 ip-api.com（百发百中）
+        val epIp = UsqueVpnService.exitIp.ifEmpty {
+            getStr(KEY_ENDPOINT_V4,
+                getRegStr("") { Usqueandroid.getDefaultEndpoint(it) })
+        }
+        if (epIp.isNotEmpty()) {
+            thread {
+                try {
+                    val json = httpGetDirect("$GEO_API/$epIp?fields=country,countryCode,city,query")
+                    if (json != null) {
+                        val j = JSONObject(json)
+                        val co = j.optString("countryCode", "")
+                        val ci = j.optString("city", "")
+                        val cn = j.optString("country", "")
+                        val ip = j.optString("query", epIp)
+                        countryCode = co
+                        countryName = if (ci.isNotEmpty()) ci else cn
+                        runOnUiThread {
+                            val flag = flagEmoji(co)
+                            countryText.text = flag
+                            countryLabel.text = countryName
+                            toolbarFlag.text = flag
+                            toolbarLocation.text = countryName
+                            exitIpText.text = ip
+                            ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
                         }
-                    } catch (_: Exception) { }
-                    if (attempt < 3) Thread.sleep(1500)
-                }
+                    }
+                } catch (_: Exception) { }
             }
-            // 第 2 步：直连
-            if (!success) {
+        }
+
+        // 辅路：通过代理走 ors.de5.net/ip（如果能通就用它的结果覆盖）
+        if (UsqueVpnService.proxyReady) {
+            thread {
                 for (attempt in 1..2) {
                     try {
-                        val json = httpGet(IP_CHECK_URL, viaProxy = false)
+                        val json = httpGetViaProxy(IP_CHECK_URL)
                         if (json != null) {
-                            applyGeoJson(json)
-                            success = true
+                            val j = JSONObject(json)
+                            val ip = j.optString("ip", "")
+                            if (ip.isNotEmpty() && ip != "127.0.0.1") {
+                                val co = j.optString("country", "")
+                                val ci = j.optString("city", "")
+                                countryCode = co
+                                countryName = if (ci.isNotEmpty()) ci else co
+                                runOnUiThread {
+                                    val flag = flagEmoji(co)
+                                    countryText.text = flag
+                                    countryLabel.text = countryName
+                                    toolbarFlag.text = flag
+                                    toolbarLocation.text = countryName
+                                    exitIpText.text = ip
+                                    ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
+                                }
+                            }
                             break
                         }
                     } catch (_: Exception) { }
-                    if (attempt < 2) Thread.sleep(1000)
+                    if (attempt < 2) Thread.sleep(1500)
                 }
             }
-            // 第 3 步：用 endpoint IP 查 ip-api.com
-            if (!success) fetchGeoByEndpoint()
         }
     }
 
-    private fun httpGet(urlStr: String, viaProxy: Boolean): String? {
+    private fun httpGetDirect(urlStr: String): String? {
         val url = URL(urlStr)
-        val conn = if (viaProxy) {
-            val p = Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
-            url.openConnection(p) as HttpURLConnection
+        val conn = url.openConnection() as HttpURLConnection
+        conn.connectTimeout = 8000
+        conn.readTimeout = 8000
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("User-Agent", "Usque/1.0")
+        return if (conn.responseCode == 200) {
+            conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
         } else {
-            url.openConnection() as HttpURLConnection
+            conn.disconnect(); null
         }
+    }
+
+    private fun httpGetViaProxy(urlStr: String): String? {
+        val proxy = Proxy(Proxy.Type.HTTP,
+            InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
+        val url = URL(urlStr)
+        val conn = url.openConnection(proxy) as HttpURLConnection
         conn.connectTimeout = 10000
         conn.readTimeout = 10000
         conn.requestMethod = "GET"
@@ -248,60 +286,12 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun applyGeoJson(jsonStr: String) {
-        val j = JSONObject(jsonStr)
-        val co = j.optString("country", "")
-        val ci = j.optString("city", "")
-        val ip = j.optString("ip", "")
-        countryCode = co
-        countryName = if (ci.isNotEmpty()) ci else co
-        runOnUiThread {
-            val flag = flagEmoji(co)
-            countryText.text = flag
-            countryLabel.text = countryName
-            toolbarFlag.text = flag
-            toolbarLocation.text = countryName
-            if (ip.isNotEmpty()) exitIpText.text = ip
-            ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
-        }
-    }
-
-    private fun fetchGeoByEndpoint() {
-        val epIp = getStr(KEY_ENDPOINT_V4,
-            getRegStr("") { Usqueandroid.getDefaultEndpoint(it) })
-        if (epIp.isEmpty()) return
-        thread {
-            try {
-                val json = httpGet("$GEO_API/$epIp?fields=country,countryCode,city", viaProxy = false)
-                if (json != null) {
-                    val j = JSONObject(json)
-                    val co = j.optString("countryCode", "")
-                    val ci = j.optString("city", "")
-                    val cn = j.optString("country", "")
-                    countryCode = co
-                    countryName = if (ci.isNotEmpty()) ci else cn
-                    runOnUiThread {
-                        val flag = flagEmoji(co)
-                        countryText.text = flag
-                        countryLabel.text = countryName
-                        toolbarFlag.text = flag
-                        toolbarLocation.text = countryName
-                        exitIpText.text = epIp
-                        ipVersionText.text = if (epIp.contains(":")) "IPv6" else "IPv4"
-                    }
-                }
-            } catch (_: Exception) { }
-        }
-    }
-
-    // ═══════════════════════════════════════════
-    //  延迟探测 — TCP ping 8.8.8.8:53
-    // ═══════════════════════════════════════════
+    // ★ 延迟 — TCP ping 8.8.8.8:53
     private fun measureLatency() {
         thread {
             try {
-                val st: Long
                 val s: Socket
+                val st: Long
                 if (UsqueVpnService.proxyReady) {
                     val p = Proxy(Proxy.Type.HTTP,
                         InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
@@ -406,9 +396,6 @@ class MainActivity : Activity() {
         else -> "0"
     }
 
-    // ═══════════════════════════════════════════
-    //  Log / DNS / Presets / Settings / Export
-    // ═══════════════════════════════════════════
     private fun showLogDialog() {
         val info = if (Usqueandroid.isRegistered(configPath()))
             Usqueandroid.getRegisterInfo(configPath()) else "(not registered)"
