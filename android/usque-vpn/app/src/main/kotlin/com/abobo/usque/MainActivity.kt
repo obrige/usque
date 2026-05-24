@@ -663,7 +663,7 @@ class MainActivity : Activity() {
                 thread {
                     val mode = if (proxyMode.selectedItemPosition == 1) "http" else "socks5"
                     val bind = proxyBind.text.toString().ifEmpty { "127.0.0.1" }
-                    val port = proxyPort.text.toString().toIntOrNull() ?: 8080
+                    val port = proxyPort.text.toString().toLongOrNull() ?: 8080L
                     val user = proxyUser.text.toString()
                     val pass = proxyPass.text.toString()
                     val err = Usqueandroid.startProxy(cp, mode, bind, port, user, pass)
