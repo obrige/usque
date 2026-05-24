@@ -18,10 +18,7 @@
         android:gravity="center_vertical"
         android:paddingStart="20dp"
         android:paddingEnd="12dp"
-        android:paddingTop="18dp"
-        android:paddingBottom="8dp"
-        android:minHeight="56dp"
-        android:background="#080c1a">
+        android:paddingTop="14dp">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -67,7 +64,6 @@
             android:tint="#8892b0" />
     </LinearLayout>
 
-    <!-- ★ paddingHorizontal 12dp — 卡片更宽 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -75,7 +71,7 @@
         android:gravity="center_horizontal"
         android:layout_gravity="center"
         android:layout_marginTop="-40dp"
-        android:paddingHorizontal="12dp">
+        android:paddingHorizontal="14dp">
 
         <TextView
             android:layout_width="wrap_content"
@@ -130,7 +126,6 @@
             android:letterSpacing="0.02"
             android:layout_marginBottom="32dp" />
 
-        <!-- ★ 信息卡片 — 加宽，weight 重新分配 -->
         <LinearLayout
             android:id="@+id/info_row"
             android:layout_width="match_parent"
@@ -140,7 +135,6 @@
             android:visibility="gone"
             android:layout_marginBottom="12dp">
 
-            <!-- 上行: 国旗 + 出口 IP — weight 1:1.8 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -149,7 +143,7 @@
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="82dp"
+                    android:layout_height="76dp"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -178,7 +172,7 @@
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="82dp"
+                    android:layout_height="76dp"
                     android:layout_weight="1.8"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -207,7 +201,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- 下行: 延迟 + 协议 + 流量 — 等宽 1:1:1 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
