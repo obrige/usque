@@ -82,7 +82,6 @@ class MainActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private var speedUpdater: Runnable? = null
     private var latencyUpdater: Runnable? = null
-    private var connectTime = 0L
     private var durationUpdater: Runnable? = null
     private var lastRx = 0L
     private var lastTx = 0L
@@ -233,14 +232,15 @@ class MainActivity : Activity() {
 
     private fun startDurationUpdater() {
         stopDurationUpdater()
-        connectTime = System.currentTimeMillis()
         durationUpdater = object : Runnable {
             override fun run() {
-                val e = (System.currentTimeMillis() - connectTime) / 1000
-                val h = e / 3600; val m = (e % 3600) / 60; val s = e % 60
-                statusText.text = if (h > 0)
-                    "已连接 · %d:%02d:%02d".format(h, m, s)
-                else "%02d:%02d".format(m, s)
+                if (UsqueVpnService.isRunning && UsqueVpnService.connectStartTime > 0) {
+                    val e = (System.currentTimeMillis() - UsqueVpnService.connectStartTime) / 1000
+                    val h = e / 3600; val m = (e % 3600) / 60; val s = e % 60
+                    statusText.text = if (h > 0)
+                        "已连接 · %d:%02d:%02d".format(h, m, s)
+                    else "%02d:%02d".format(m, s)
+                }
                 handler.postDelayed(this, 1000)
             }
         }
