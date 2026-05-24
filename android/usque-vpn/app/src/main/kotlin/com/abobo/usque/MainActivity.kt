@@ -51,7 +51,6 @@ class MainActivity : Activity() {
         private const val DEFAULT_SNI = "cdnjs.cloudflare.com"
         private const val DEFAULT_MODEL = "PC"
         private const val DEFAULT_LOCALE = "en_US"
-        private const val GEO_API = "http://ip-api.com/json"
         private const val IP_CHECK_URL = "https://ors.de5.net/ip"
 
         @Volatile var countryCode: String = ""
@@ -143,7 +142,7 @@ class MainActivity : Activity() {
         super.onResume()
         updateUI()
         if (UsqueVpnService.isRunning) {
-            handler.postDelayed({ fetchIpLocation() }, 2000)
+            handler.postDelayed({ fetchIpLocation() }, 2500)
         } else {
             fetchIpLocation()
         }
@@ -190,25 +189,27 @@ class MainActivity : Activity() {
         } catch (_: Exception) { String(Character.toChars(0x1F310)) }
     }
 
-    // ★ IP 查询 — 双路并行：endpoint geo（可靠）+ 代理 ors.de5.net（二次确认）
+    // ★ IP 查询 — 直连 ors.de5.net/ip，已走 VPN 隧道
     private fun fetchIpLocation() {
-        // 主路：用 endpoint IP 查 ip-api.com（百发百中）
-        val epIp = UsqueVpnService.exitIp.ifEmpty {
-            getStr(KEY_ENDPOINT_V4,
-                getRegStr("") { Usqueandroid.getDefaultEndpoint(it) })
-        }
-        if (epIp.isNotEmpty()) {
-            thread {
+        thread {
+            for (attempt in 1..3) {
                 try {
-                    val json = httpGetDirect("$GEO_API/$epIp?fields=country,countryCode,city,query")
-                    if (json != null) {
-                        val j = JSONObject(json)
-                        val co = j.optString("countryCode", "")
+                    val url = URL(IP_CHECK_URL)
+                    val conn = url.openConnection() as HttpURLConnection
+                    conn.connectTimeout = 10000
+                    conn.readTimeout = 10000
+                    conn.requestMethod = "GET"
+                    conn.setRequestProperty("User-Agent", "Usque/1.0")
+                    if (conn.responseCode == 200) {
+                        val body = conn.inputStream.bufferedReader().readText()
+                        conn.disconnect()
+                        val j = JSONObject(body)
+                        val co = j.optString("country", "")
                         val ci = j.optString("city", "")
-                        val cn = j.optString("country", "")
-                        val ip = j.optString("query", epIp)
+                        val ip = j.optString("ip", "")
+                        if (ip.isEmpty()) continue
                         countryCode = co
-                        countryName = if (ci.isNotEmpty()) ci else cn
+                        countryName = if (ci.isNotEmpty()) ci else co
                         runOnUiThread {
                             val flag = flagEmoji(co)
                             countryText.text = flag
@@ -218,75 +219,16 @@ class MainActivity : Activity() {
                             exitIpText.text = ip
                             ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
                         }
+                        return@thread
                     }
+                    conn.disconnect()
                 } catch (_: Exception) { }
-            }
-        }
-
-        // 辅路：通过代理走 ors.de5.net/ip（如果能通就用它的结果覆盖）
-        if (UsqueVpnService.proxyReady) {
-            thread {
-                for (attempt in 1..2) {
-                    try {
-                        val json = httpGetViaProxy(IP_CHECK_URL)
-                        if (json != null) {
-                            val j = JSONObject(json)
-                            val ip = j.optString("ip", "")
-                            if (ip.isNotEmpty() && ip != "127.0.0.1") {
-                                val co = j.optString("country", "")
-                                val ci = j.optString("city", "")
-                                countryCode = co
-                                countryName = if (ci.isNotEmpty()) ci else co
-                                runOnUiThread {
-                                    val flag = flagEmoji(co)
-                                    countryText.text = flag
-                                    countryLabel.text = countryName
-                                    toolbarFlag.text = flag
-                                    toolbarLocation.text = countryName
-                                    exitIpText.text = ip
-                                    ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
-                                }
-                            }
-                            break
-                        }
-                    } catch (_: Exception) { }
-                    if (attempt < 2) Thread.sleep(1500)
-                }
+                if (attempt < 3) Thread.sleep(2000)
             }
         }
     }
 
-    private fun httpGetDirect(urlStr: String): String? {
-        val url = URL(urlStr)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.connectTimeout = 8000
-        conn.readTimeout = 8000
-        conn.requestMethod = "GET"
-        conn.setRequestProperty("User-Agent", "Usque/1.0")
-        return if (conn.responseCode == 200) {
-            conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
-        } else {
-            conn.disconnect(); null
-        }
-    }
-
-    private fun httpGetViaProxy(urlStr: String): String? {
-        val proxy = Proxy(Proxy.Type.HTTP,
-            InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
-        val url = URL(urlStr)
-        val conn = url.openConnection(proxy) as HttpURLConnection
-        conn.connectTimeout = 10000
-        conn.readTimeout = 10000
-        conn.requestMethod = "GET"
-        conn.setRequestProperty("User-Agent", "Usque/1.0")
-        return if (conn.responseCode == 200) {
-            conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
-        } else {
-            conn.disconnect(); null
-        }
-    }
-
-    // ★ 延迟 — TCP ping 8.8.8.8:53
+    // ★ 延迟 — TCP ping 8.8.8.8:53，走代理
     private fun measureLatency() {
         thread {
             try {
