@@ -7,9 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
-import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Bundle
 import android.os.Handler
@@ -194,58 +191,22 @@ class MainActivity : Activity() {
     }
 
     // ═══════════════════════════════════════════
-    //  找 VPN Network（绕过 addDisallowedApplication）
-    // ═══════════════════════════════════════════
-    private fun findVpnNetwork(): Network? {
-        try {
-            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            for (net in cm.allNetworks) {
-                val caps = cm.getNetworkCapabilities(net)
-                if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) {
-                    return net
-                }
-            }
-        } catch (_: Exception) { }
-        return null
-    }
-
-    // ═══════════════════════════════════════════
-    //  通过指定 Network 发起 HTTP GET
-    // ═══════════════════════════════════════════
-    private fun httpGetViaNetwork(urlStr: String, network: Network): String? {
-        val url = URL(urlStr)
-        val conn = network.openConnection(url) as HttpURLConnection
-        conn.connectTimeout = 10000
-        conn.readTimeout = 10000
-        conn.requestMethod = "GET"
-        conn.setRequestProperty("User-Agent", "Usque/1.0")
-        return if (conn.responseCode == 200) {
-            conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
-        } else {
-            conn.disconnect(); null
-        }
-    }
-
-    // ═══════════════════════════════════════════
-    //  IP 查询 — 仅走 VPN Network，失败显示 --
+    //  IP 查询 — 走 localhost 代理 → 代理动态绑 VPN Network → 隧道出口
     // ═══════════════════════════════════════════
     private fun fetchIpLocation() {
         thread {
             var success = false
-            if (UsqueVpnService.isRunning) {
-                val vpnNet = findVpnNetwork()
-                if (vpnNet != null) {
-                    for (attempt in 1..3) {
-                        try {
-                            val json = httpGetViaNetwork(IP_CHECK_URL, vpnNet)
-                            if (json != null) {
-                                applyGeoJson(json)
-                                success = true
-                                break
-                            }
-                        } catch (_: Exception) { }
-                        if (attempt < 3) Thread.sleep(1500)
-                    }
+            if (UsqueVpnService.proxyReady) {
+                for (attempt in 1..5) {
+                    try {
+                        val json = httpGet(IP_CHECK_URL, viaProxy = true)
+                        if (json != null) {
+                            applyGeoJson(json)
+                            success = true
+                            break
+                        }
+                    } catch (_: Exception) { }
+                    Thread.sleep(2000)
                 }
             }
             if (!success) {
@@ -259,6 +220,25 @@ class MainActivity : Activity() {
                     ipVersionText.text = "--"
                 }
             }
+        }
+    }
+
+    private fun httpGet(urlStr: String, viaProxy: Boolean): String? {
+        val url = URL(urlStr)
+        val conn = if (viaProxy) {
+            val p = Proxy(Proxy.Type.HTTP, InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
+            url.openConnection(p) as HttpURLConnection
+        } else {
+            url.openConnection() as HttpURLConnection
+        }
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("User-Agent", "Usque/1.0")
+        return if (conn.responseCode == 200) {
+            conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
+        } else {
+            conn.disconnect(); null
         }
     }
 
