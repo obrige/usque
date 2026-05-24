@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#f8fafc">
+
+    <!-- 顶部操作栏 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end"
+        android:padding="16dp">
+
+        <ImageButton
+            android:id="@+id/log_button"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_info_details"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="日志"
+            android:tint="#94a3b8" />
+
+        <ImageButton
+            android:id="@+id/settings_icon"
+            android:layout_width="40dp" android:layout_height="40dp"
+            android:src="@android:drawable/ic_menu_manage"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="设置"
+            android:tint="#94a3b8" />
+    </LinearLayout>
+
+    <!-- 主内容区 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Usque"
+            android:textSize="16sp"
+            android:textColor="#94a3b8"
+            android:letterSpacing="0.3"
+            android:layout_marginBottom="32dp" />
+
+        <!-- 大连接按钮 + 脉冲动画 -->
+        <RelativeLayout
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_marginBottom="24dp">
+
+            <!-- 脉冲外圈 -->
+            <View
+                android:id="@+id/pulse_ring"
+                android:layout_width="120dp" android:layout_height="120dp"
+                android:layout_centerInParent="true"
+                android:background="@drawable/pulse_ring" />
+
+            <!-- 连接按钮 -->
+            <Button
+                android:id="@+id/connect_button"
+                android:layout_width="88dp" android:layout_height="88dp"
+                android:layout_centerInParent="true"
+                android:text="连接"
+                android:textSize="15sp" android:textStyle="bold"
+                android:textColor="#ffffff"
+                android:background="@drawable/connect_button_bg"
+                android:stateListAnimator="@null" />
+        </RelativeLayout>
+
+        <!-- 状态 + 时长 -->
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="未连接"
+            android:textSize="14sp"
+            android:textColor="#94a3b8"
+            android:layout_marginBottom="24dp" />
+
+        <!-- 信息卡片: 延迟 | 国家 | IP版本 -->
+        <LinearLayout
+            android:id="@+id/info_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical"
+                android:gravity="center" android:padding="10dp"
+                android:background="@drawable/info_chip_bg">
+                <TextView android:id="@+id/latency_text"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="-- ms" android:textSize="16sp" android:textStyle="bold"
+                    android:textColor="#0f172a" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="延迟" android:textSize="10sp" android:textColor="#94a3b8" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical"
+                android:gravity="center" android:padding="10dp"
+                android:background="@drawable/info_chip_bg"
+                android:layout_marginStart="8dp" android:layout_marginEnd="8dp">
+                <TextView android:id="@+id/country_text"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="🌐" android:textSize="22sp" />
+                <TextView android:id="@+id/country_label"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="--" android:textSize="10sp" android:textColor="#94a3b8" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical"
+                android:gravity="center" android:padding="10dp"
+                android:background="@drawable/info_chip_bg">
+                <TextView android:id="@+id/ip_version_text"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="IPv4" android:textSize="16sp" android:textStyle="bold"
+                    android:textColor="#0f172a" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="协议" android:textSize="10sp" android:textColor="#94a3b8" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 出口 IP -->
+        <TextView
+            android:id="@+id/exit_ip_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="14sp"
+            android:textColor="#475569"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="16dp" />
+
+        <!-- 网速 -->
+        <TextView
+            android:id="@+id/speed_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="12sp"
+            android:textColor="#94a3b8" />
+
+    </LinearLayout>
+
+</FrameLayout>

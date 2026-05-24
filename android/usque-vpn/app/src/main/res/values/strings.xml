@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Usque</string>
+    <string-array name="proxy_modes">
+        <item>HTTP CONNECT</item>
+        <item>SOCKS5</item>
+    </string-array>
+</resources>
