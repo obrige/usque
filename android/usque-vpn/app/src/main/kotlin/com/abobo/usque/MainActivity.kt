@@ -124,659 +124,282 @@ class MainActivity : Activity() {
         pulseRing = findViewById(R.id.pulse_ring)
         pulseRingOuter = findViewById(R.id.pulse_ring_outer)
 
-        findViewById<ImageButton>(R.id.settings_icon)
-            .setOnClickListener { showSettingsDialog() }
-        findViewById<ImageButton>(R.id.log_button)
-            .setOnClickListener { showLogDialog() }
+        findViewById<ImageButton>(R.id.settings_icon).setOnClickListener { showSettingsDialog() }
+        findViewById<ImageButton>(R.id.log_button).setOnClickListener { showLogDialog() }
 
-        loadPresets()
-        loadSavedSettings()
+        loadPresets(); loadSavedSettings()
         connectButton.setOnClickListener {
             if (UsqueVpnService.isRunning) stopVpn() else startVpn()
         }
-        startPulseAnimation()
-        updateUI()
+        startPulseAnimation(); updateUI()
     }
 
     override fun onResume() {
-        super.onResume()
-        updateUI()
-        if (UsqueVpnService.isRunning) {
-            handler.postDelayed({ fetchIpLocation() }, 2500)
-        } else {
-            fetchIpLocation()
-        }
+        super.onResume(); updateUI()
+        if (UsqueVpnService.isRunning) handler.postDelayed({ fetchIpLocation() }, 3000)
+        else fetchIpLocation()
     }
 
-    override fun onPause() {
-        super.onPause()
-        stopSpeedUpdater()
-        stopLatencyUpdater()
-        stopDurationUpdater()
-    }
+    override fun onPause() { super.onPause(); stopSpeedUpdater(); stopLatencyUpdater(); stopDurationUpdater() }
 
     private fun configPath() = "${filesDir.absolutePath}/config.json"
-
-    private fun getStr(k: String, f: String): String =
-        prefs.getString(k, null)?.takeIf { it.isNotEmpty() } ?: f
-
+    private fun getStr(k: String, f: String): String = prefs.getString(k, null)?.takeIf { it.isNotEmpty() } ?: f
     private fun getBool(k: String, d: Boolean): Boolean = prefs.getBoolean(k, d)
-
-    private fun getRegStr(f: String, g: (String) -> String): String =
-        g(configPath()).ifEmpty { f }
+    private fun getRegStr(f: String, g: (String) -> String): String = g(configPath()).ifEmpty { f }
 
     private fun startPulseAnimation() {
         val rings = listOf(pulseRing, pulseRingOuter)
         pulseAnimator = ValueAnimator.ofFloat(1f, 1.25f, 1f).apply {
-            duration = 2000
-            repeatCount = ValueAnimator.INFINITE
-            interpolator = LinearInterpolator()
-            addUpdateListener {
-                val s = it.animatedValue as Float
-                rings.forEach { ring ->
-                    ring.scaleX = s; ring.scaleY = s; ring.alpha = 2f - s
-                }
-            }
+            duration = 2000; repeatCount = ValueAnimator.INFINITE; interpolator = LinearInterpolator()
+            addUpdateListener { val s = it.animatedValue as Float; rings.forEach { r -> r.scaleX = s; r.scaleY = s; r.alpha = 2f - s } }
             start()
         }
     }
 
     private fun flagEmoji(code: String): String {
         if (code.length != 2) return String(Character.toChars(0x1F310))
-        return try {
-            String(Character.toChars(0x1F1E6 + (code[0] - 'A'))) +
-            String(Character.toChars(0x1F1E6 + (code[1] - 'A')))
-        } catch (_: Exception) { String(Character.toChars(0x1F310)) }
+        return try { String(Character.toChars(0x1F1E6 + (code[0] - 'A'))) + String(Character.toChars(0x1F1E6 + (code[1] - 'A'))) }
+        catch (_: Exception) { String(Character.toChars(0x1F310)) }
     }
 
-    // ★ IP 查询 — 直连 ors.de5.net/ip，已走 VPN 隧道
+    // ★ IP 查询 — 直连 ors.de5.net/ip，已走 VPN
     private fun fetchIpLocation() {
+        if (!UsqueVpnService.isRunning) return
         thread {
             for (attempt in 1..3) {
                 try {
                     val url = URL(IP_CHECK_URL)
                     val conn = url.openConnection() as HttpURLConnection
-                    conn.connectTimeout = 10000
-                    conn.readTimeout = 10000
+                    conn.connectTimeout = 15000; conn.readTimeout = 15000
                     conn.requestMethod = "GET"
                     conn.setRequestProperty("User-Agent", "Usque/1.0")
                     if (conn.responseCode == 200) {
-                        val body = conn.inputStream.bufferedReader().readText()
-                        conn.disconnect()
+                        val body = conn.inputStream.bufferedReader().readText(); conn.disconnect()
                         val j = JSONObject(body)
                         val co = j.optString("country", "")
                         val ci = j.optString("city", "")
                         val ip = j.optString("ip", "")
-                        if (ip.isEmpty()) continue
-                        countryCode = co
-                        countryName = if (ci.isNotEmpty()) ci else co
-                        runOnUiThread {
-                            val flag = flagEmoji(co)
-                            countryText.text = flag
-                            countryLabel.text = countryName
-                            toolbarFlag.text = flag
-                            toolbarLocation.text = countryName
-                            exitIpText.text = ip
-                            ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
+                        if (ip.isNotEmpty()) {
+                            countryCode = co; countryName = if (ci.isNotEmpty()) ci else co
+                            runOnUiThread {
+                                val flag = flagEmoji(co)
+                                countryText.text = flag; countryLabel.text = countryName
+                                toolbarFlag.text = flag; toolbarLocation.text = countryName
+                                exitIpText.text = ip
+                                ipVersionText.text = if (ip.contains(":")) "IPv6" else "IPv4"
+                            }
+                            return@thread
                         }
-                        return@thread
                     }
                     conn.disconnect()
-                } catch (_: Exception) { }
+                } catch (_: Exception) {}
                 if (attempt < 3) Thread.sleep(2000)
             }
         }
     }
 
-    // ★ 延迟 — TCP ping 8.8.8.8:53，走代理
     private fun measureLatency() {
         thread {
             try {
-                val s: Socket
-                val st: Long
-                if (UsqueVpnService.proxyReady) {
-                    val p = Proxy(Proxy.Type.HTTP,
-                        InetSocketAddress("127.0.0.1", UsqueVpnService.PROXY_PORT))
-                    s = Socket(p)
-                    st = System.currentTimeMillis()
-                    s.connect(InetSocketAddress("8.8.8.8", 53), 8000)
-                } else {
-                    s = Socket()
-                    st = System.currentTimeMillis()
-                    s.connect(InetSocketAddress("8.8.8.8", 53), 8000)
-                }
-                val lat = System.currentTimeMillis() - st
-                s.close()
+                val s = Socket(); val st = System.currentTimeMillis()
+                s.connect(InetSocketAddress("8.8.8.8", 53), 8000)
+                val lat = System.currentTimeMillis() - st; s.close()
                 runOnUiThread { latencyText.text = "${lat} ms" }
-            } catch (_: Exception) {
-                runOnUiThread { latencyText.text = "超时" }
-            }
+            } catch (_: Exception) { runOnUiThread { latencyText.text = "超时" } }
         }
     }
 
     private fun startLatencyUpdater() {
         stopLatencyUpdater()
         latencyUpdater = object : Runnable {
-            override fun run() {
-                if (UsqueVpnService.isRunning) measureLatency()
-                handler.postDelayed(this, 6000)
-            }
+            override fun run() { if (UsqueVpnService.isRunning) measureLatency(); handler.postDelayed(this, 6000) }
         }
         handler.postDelayed(latencyUpdater!!, 4000)
     }
-
-    private fun stopLatencyUpdater() {
-        latencyUpdater?.let { handler.removeCallbacks(it) }
-        latencyUpdater = null
-    }
+    private fun stopLatencyUpdater() { latencyUpdater?.let { handler.removeCallbacks(it) }; latencyUpdater = null }
 
     private fun startDurationUpdater() {
-        stopDurationUpdater()
-        connectTime = System.currentTimeMillis()
+        stopDurationUpdater(); connectTime = System.currentTimeMillis()
         durationUpdater = object : Runnable {
             override fun run() {
                 val e = (System.currentTimeMillis() - connectTime) / 1000
-                val h = e / 3600; val m = (e % 3600) / 60; val s = e % 60
-                statusText.text = if (h > 0)
-                    "已连接 · %d:%02d:%02d".format(h, m, s)
-                else "%02d:%02d".format(m, s)
+                statusText.text = if (e / 3600 > 0) "已连接 · %d:%02d:%02d".format(e / 3600, (e % 3600) / 60, e % 60)
+                else "%02d:%02d".format((e % 3600) / 60, e % 60)
                 handler.postDelayed(this, 1000)
             }
         }
         handler.post(durationUpdater!!)
     }
-
-    private fun stopDurationUpdater() {
-        durationUpdater?.let { handler.removeCallbacks(it) }
-        durationUpdater = null
-    }
+    private fun stopDurationUpdater() { durationUpdater?.let { handler.removeCallbacks(it) }; durationUpdater = null }
 
     private fun startSpeedUpdater() {
         stopSpeedUpdater()
-        totalRxBase = UsqueVpnService.totalRx
-        totalTxBase = UsqueVpnService.totalTx
+        totalRxBase = UsqueVpnService.totalRx; totalTxBase = UsqueVpnService.totalTx
         lastRx = totalRxBase; lastTx = totalTxBase
         speedUpdater = object : Runnable {
             override fun run() {
                 if (UsqueVpnService.isRunning) {
-                    val rx = UsqueVpnService.totalRx
-                    val tx = UsqueVpnService.totalTx
+                    val rx = UsqueVpnService.totalRx; val tx = UsqueVpnService.totalTx
                     val n = System.currentTimeMillis()
                     if (lastSpeedTime > 0) {
                         val e = (n - lastSpeedTime) / 1000.0
-                        if (e > 0) {
-                            speedDownText.text = fmt(((rx - lastRx) / e).toLong()) + "/s"
-                            speedUpText.text = fmt(((tx - lastTx) / e).toLong()) + "/s"
-                        }
+                        if (e > 0) { speedDownText.text = fmt(((rx - lastRx) / e).toLong()) + "/s"; speedUpText.text = fmt(((tx - lastTx) / e).toLong()) + "/s" }
                     }
                     lastRx = rx; lastTx = tx; lastSpeedTime = n
-                    totalDataText.text = "↓" + fmtCompact(rx - totalRxBase) +
-                        "\n↑" + fmtCompact(tx - totalTxBase)
+                    totalDataText.text = "↓" + fmtCompact(rx - totalRxBase) + "\n↑" + fmtCompact(tx - totalTxBase)
                 }
                 handler.postDelayed(this, 1000)
             }
         }
         handler.post(speedUpdater!!)
     }
+    private fun stopSpeedUpdater() { speedUpdater?.let { handler.removeCallbacks(it) }; speedUpdater = null }
 
-    private fun stopSpeedUpdater() {
-        speedUpdater?.let { handler.removeCallbacks(it) }
-        speedUpdater = null
-    }
+    private fun fmt(b: Long) = when { b >= 1_000_000 -> "%.1f MB".format(b / 1_000_000.0); b >= 1_000 -> "%.1f KB".format(b / 1_000.0); b >= 0 -> "$b B"; else -> "0 B" }
+    private fun fmtCompact(b: Long) = when { b >= 1_000_000 -> "%.1fM".format(b / 1_000_000.0); b >= 1_000 -> "%.1fK".format(b / 1_000.0); b >= 0 -> "${b}B"; else -> "0" }
 
-    private fun fmt(b: Long) = when {
-        b >= 1_000_000 -> "%.1f MB".format(b / 1_000_000.0)
-        b >= 1_000 -> "%.1f KB".format(b / 1_000.0)
-        b >= 0 -> "$b B"
-        else -> "0 B"
-    }
-
-    private fun fmtCompact(b: Long) = when {
-        b >= 1_000_000 -> "%.1fM".format(b / 1_000_000.0)
-        b >= 1_000 -> "%.1fK".format(b / 1_000.0)
-        b >= 0 -> "${b}B"
-        else -> "0"
-    }
-
+    // ── Log / DNS / Presets / Settings / Export ──
     private fun showLogDialog() {
-        val info = if (Usqueandroid.isRegistered(configPath()))
-            Usqueandroid.getRegisterInfo(configPath()) else "(not registered)"
+        val info = if (Usqueandroid.isRegistered(configPath())) Usqueandroid.getRegisterInfo(configPath()) else "(not registered)"
         val lv = TextView(this).apply {
-            text = info; textSize = 10f
-            setTextColor(Color.parseColor("#8892b0"))
-            setPadding(20, 20, 20, 20)
-            movementMethod = ScrollingMovementMethod()
-            setLineSpacing(4f, 1f)
-            typeface = android.graphics.Typeface.MONOSPACE
+            text = info; textSize = 10f; setTextColor(Color.parseColor("#8892b0")); setPadding(20, 20, 20, 20)
+            movementMethod = ScrollingMovementMethod(); setLineSpacing(4f, 1f); typeface = android.graphics.Typeface.MONOSPACE
             setBackgroundColor(Color.parseColor("#161b30"))
         }
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Log / Info").setView(lv)
-            .setPositiveButton("DNS Test") { _, _ -> runDnsTest() }
-            .setNegativeButton("Close", null)
-            .setNeutralButton("Export") { _, _ -> showExportDialog() }
-            .show()
+        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert).setTitle("Log / Info").setView(lv)
+            .setPositiveButton("DNS Test") { _, _ -> runDnsTest() }.setNegativeButton("Close", null)
+            .setNeutralButton("Export") { _, _ -> showExportDialog() }.show()
     }
 
     private fun runDnsTest() {
         thread {
             val sb = StringBuilder().apply {
-                appendLine("=== DNS Test ===")
-                appendLine("DNS: " + (getStr(KEY_DNS, DEFAULT_DNS)
-                    ?: DEFAULT_DNS).replace("\n", ", "))
+                appendLine("=== DNS Test ==="); appendLine("DNS: " + (getStr(KEY_DNS, DEFAULT_DNS) ?: DEFAULT_DNS).replace("\n", ", "))
                 listOf("cloudflare.com", "google.com", "github.com").forEach { d ->
-                    try {
-                        appendLine("[OK] $d -> " +
-                            java.net.InetAddress.getByName(d).hostAddress)
-                    } catch (e: Exception) {
-                        appendLine("[FAIL] $d -> ${e.message}")
-                    }
+                    try { appendLine("[OK] $d -> " + java.net.InetAddress.getByName(d).hostAddress) }
+                    catch (e: Exception) { appendLine("[FAIL] $d -> ${e.message}") }
                 }
                 appendLine("===============")
             }
-            runOnUiThread {
-                AlertDialog.Builder(this).setTitle("DNS Test Result")
-                    .setMessage(sb.toString()).setPositiveButton("OK", null).show()
-            }
+            runOnUiThread { AlertDialog.Builder(this).setTitle("DNS Test Result").setMessage(sb.toString()).setPositiveButton("OK", null).show() }
         }
     }
 
     private fun loadPresets() {
-        presets.clear()
-        val j = prefs.getString(KEY_PRESETS, null) ?: return
-        try {
-            val a = org.json.JSONArray(j)
-            for (i in 0 until a.length()) {
-                val o = a.getJSONObject(i)
-                presets.add(PresetConfig(
-                    o.getString("name"),
-                    o.optString("sni", DEFAULT_SNI),
-                    o.optString("endpointV4", ""), o.optString("endpointV6", ""),
-                    o.optString("dnsServers", DEFAULT_DNS),
-                    o.optString("privateKey", ""), o.optString("endpointPubKey", ""),
-                    o.optString("deviceName", DEFAULT_DEVICE),
-                    o.optString("jwt", ""), o.optString("license", ""),
-                    o.optString("token", ""), o.optString("accountId", ""),
-                    o.optString("model", DEFAULT_MODEL),
-                    o.optString("locale", DEFAULT_LOCALE),
-                    o.optString("userAgent", ""), o.optString("clientVersion", ""),
-                    o.optBoolean("zeroTier", false)
-                ))
-            }
-        } catch (_: Exception) { }
+        presets.clear(); val j = prefs.getString(KEY_PRESETS, null) ?: return
+        try { val a = org.json.JSONArray(j); for (i in 0 until a.length()) { val o = a.getJSONObject(i); presets.add(PresetConfig(o.getString("name"), o.optString("sni", DEFAULT_SNI), o.optString("endpointV4", ""), o.optString("endpointV6", ""), o.optString("dnsServers", DEFAULT_DNS), o.optString("privateKey", ""), o.optString("endpointPubKey", ""), o.optString("deviceName", DEFAULT_DEVICE), o.optString("jwt", ""), o.optString("license", ""), o.optString("token", ""), o.optString("accountId", ""), o.optString("model", DEFAULT_MODEL), o.optString("locale", DEFAULT_LOCALE), o.optString("userAgent", ""), o.optString("clientVersion", ""), o.optBoolean("zeroTier", false))) } }
+        catch (_: Exception) {}
     }
 
     private fun savePresets() {
-        val a = org.json.JSONArray()
-        presets.forEach { p ->
-            a.put(JSONObject().apply {
-                put("name", p.name); put("sni", p.sni)
-                put("endpointV4", p.endpointV4); put("endpointV6", p.endpointV6)
-                put("dnsServers", p.dnsServers)
-                put("privateKey", p.privateKey); put("endpointPubKey", p.endpointPubKey)
-                put("deviceName", p.deviceName)
-                put("jwt", p.jwt); put("license", p.license)
-                put("token", p.token); put("accountId", p.accountId)
-                put("model", p.model); put("locale", p.locale)
-                put("userAgent", p.userAgent); put("clientVersion", p.clientVersion)
-                put("zeroTier", p.zeroTier)
-            })
-        }
+        val a = org.json.JSONArray(); presets.forEach { p -> a.put(JSONObject().apply { put("name", p.name); put("sni", p.sni); put("endpointV4", p.endpointV4); put("endpointV6", p.endpointV6); put("dnsServers", p.dnsServers); put("privateKey", p.privateKey); put("endpointPubKey", p.endpointPubKey); put("deviceName", p.deviceName); put("jwt", p.jwt); put("license", p.license); put("token", p.token); put("accountId", p.accountId); put("model", p.model); put("locale", p.locale); put("userAgent", p.userAgent); put("clientVersion", p.clientVersion); put("zeroTier", p.zeroTier) }) }
         prefs.edit().putString(KEY_PRESETS, a.toString()).apply()
     }
 
     private fun showPresetDialog() {
-        if (presets.isEmpty()) {
-            Toast.makeText(this, "No presets", Toast.LENGTH_SHORT).show(); return
-        }
-        AlertDialog.Builder(this).setTitle("Presets")
-            .setItems(presets.map { it.name }.toTypedArray()) { _, i ->
-                AlertDialog.Builder(this).setTitle("Action: ${presets[i].name}")
-                    .setItems(arrayOf("Apply", "Edit", "Delete")) { _, op ->
-                        when (op) {
-                            0 -> { applyPreset(presets[i])
-                                Toast.makeText(this, "Applied", Toast.LENGTH_SHORT).show() }
-                            1 -> showEditPresetDialog(i)
-                            2 -> { presets.removeAt(i); savePresets()
-                                Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show() }
-                        }
-                    }.show()
+        if (presets.isEmpty()) { Toast.makeText(this, "No presets", Toast.LENGTH_SHORT).show(); return }
+        AlertDialog.Builder(this).setTitle("Presets").setItems(presets.map { it.name }.toTypedArray()) { _, i ->
+            AlertDialog.Builder(this).setTitle("Action: ${presets[i].name}").setItems(arrayOf("Apply", "Edit", "Delete")) { _, op ->
+                when (op) {
+                    0 -> { applyPreset(presets[i]); Toast.makeText(this, "Applied", Toast.LENGTH_SHORT).show() }
+                    1 -> showEditPresetDialog(i)
+                    2 -> { presets.removeAt(i); savePresets(); Toast.makeText(this, "Deleted", Toast.LENGTH_SHORT).show() }
+                }
             }.show()
+        }.show()
     }
 
     private fun showEditPresetDialog(idx: Int) {
-        val p = presets[idx]
-        val v = layoutInflater.inflate(R.layout.dialog_settings, null)
-        v.findViewById<EditText>(R.id.sni_input).setText(p.sni)
-        v.findViewById<EditText>(R.id.endpoint_v4_input).setText(p.endpointV4)
-        v.findViewById<EditText>(R.id.endpoint_v6_input).setText(p.endpointV6)
-        v.findViewById<EditText>(R.id.dns_input).setText(p.dnsServers)
-        v.findViewById<EditText>(R.id.private_key_input).setText(p.privateKey)
-        v.findViewById<EditText>(R.id.endpoint_pubkey_input).setText(p.endpointPubKey)
-        v.findViewById<EditText>(R.id.device_name_input).setText(p.deviceName)
-        v.findViewById<EditText>(R.id.jwt_input).setText(p.jwt)
-        v.findViewById<EditText>(R.id.license_input).setText(p.license)
-        v.findViewById<EditText>(R.id.token_input).setText(p.token)
-        v.findViewById<EditText>(R.id.account_id_input).setText(p.accountId)
-        v.findViewById<EditText>(R.id.model_input).setText(p.model)
-        v.findViewById<EditText>(R.id.locale_input).setText(p.locale)
-        v.findViewById<EditText>(R.id.user_agent_input).setText(p.userAgent)
-        v.findViewById<EditText>(R.id.client_version_input).setText(p.clientVersion)
-        (v.findViewById<Switch>(R.id.zero_tier_switch)).isChecked = p.zeroTier
-        listOf(R.id.registered_device_id, R.id.registered_license, R.id.registered_pubkey)
-            .forEach { v.findViewById<TextView>(it)?.visibility = View.GONE }
-        AlertDialog.Builder(this).setTitle("Edit: ${p.name}").setView(v)
-            .setPositiveButton("Save") { _, _ ->
-                presets[idx] = PresetConfig(
-                    p.name,
-                    v.findViewById<EditText>(R.id.sni_input).text.toString(),
-                    v.findViewById<EditText>(R.id.endpoint_v4_input).text.toString(),
-                    v.findViewById<EditText>(R.id.endpoint_v6_input).text.toString(),
-                    v.findViewById<EditText>(R.id.dns_input).text.toString(),
-                    v.findViewById<EditText>(R.id.private_key_input).text.toString().trim(),
-                    v.findViewById<EditText>(R.id.endpoint_pubkey_input).text.toString().trim(),
-                    v.findViewById<EditText>(R.id.device_name_input).text.toString(),
-                    v.findViewById<EditText>(R.id.jwt_input).text.toString().trim(),
-                    v.findViewById<EditText>(R.id.license_input).text.toString().trim(),
-                    v.findViewById<EditText>(R.id.token_input).text.toString().trim(),
-                    v.findViewById<EditText>(R.id.account_id_input).text.toString().trim(),
-                    v.findViewById<EditText>(R.id.model_input).text.toString(),
-                    v.findViewById<EditText>(R.id.locale_input).text.toString(),
-                    v.findViewById<EditText>(R.id.user_agent_input).text.toString(),
-                    v.findViewById<EditText>(R.id.client_version_input).text.toString(),
-                    (v.findViewById<Switch>(R.id.zero_tier_switch)).isChecked
-                )
-                savePresets()
-                Toast.makeText(this, "Updated", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null).show()
+        val p = presets[idx]; val v = layoutInflater.inflate(R.layout.dialog_settings, null)
+        v.findViewById<EditText>(R.id.sni_input).setText(p.sni); v.findViewById<EditText>(R.id.endpoint_v4_input).setText(p.endpointV4)
+        v.findViewById<EditText>(R.id.endpoint_v6_input).setText(p.endpointV6); v.findViewById<EditText>(R.id.dns_input).setText(p.dnsServers)
+        v.findViewById<EditText>(R.id.private_key_input).setText(p.privateKey); v.findViewById<EditText>(R.id.endpoint_pubkey_input).setText(p.endpointPubKey)
+        v.findViewById<EditText>(R.id.device_name_input).setText(p.deviceName); v.findViewById<EditText>(R.id.jwt_input).setText(p.jwt)
+        v.findViewById<EditText>(R.id.license_input).setText(p.license); v.findViewById<EditText>(R.id.token_input).setText(p.token)
+        v.findViewById<EditText>(R.id.account_id_input).setText(p.accountId); v.findViewById<EditText>(R.id.model_input).setText(p.model)
+        v.findViewById<EditText>(R.id.locale_input).setText(p.locale); v.findViewById<EditText>(R.id.user_agent_input).setText(p.userAgent)
+        v.findViewById<EditText>(R.id.client_version_input).setText(p.clientVersion); (v.findViewById<Switch>(R.id.zero_tier_switch)).isChecked = p.zeroTier
+        listOf(R.id.registered_device_id, R.id.registered_license, R.id.registered_pubkey).forEach { v.findViewById<TextView>(it)?.visibility = View.GONE }
+        AlertDialog.Builder(this).setTitle("Edit: ${p.name}").setView(v).setPositiveButton("Save") { _, _ ->
+            presets[idx] = PresetConfig(p.name, v.findViewById<EditText>(R.id.sni_input).text.toString(), v.findViewById<EditText>(R.id.endpoint_v4_input).text.toString(), v.findViewById<EditText>(R.id.endpoint_v6_input).text.toString(), v.findViewById<EditText>(R.id.dns_input).text.toString(), v.findViewById<EditText>(R.id.private_key_input).text.toString().trim(), v.findViewById<EditText>(R.id.endpoint_pubkey_input).text.toString().trim(), v.findViewById<EditText>(R.id.device_name_input).text.toString(), v.findViewById<EditText>(R.id.jwt_input).text.toString().trim(), v.findViewById<EditText>(R.id.license_input).text.toString().trim(), v.findViewById<EditText>(R.id.token_input).text.toString().trim(), v.findViewById<EditText>(R.id.account_id_input).text.toString().trim(), v.findViewById<EditText>(R.id.model_input).text.toString(), v.findViewById<EditText>(R.id.locale_input).text.toString(), v.findViewById<EditText>(R.id.user_agent_input).text.toString(), v.findViewById<EditText>(R.id.client_version_input).text.toString(), (v.findViewById<Switch>(R.id.zero_tier_switch)).isChecked)
+            savePresets(); Toast.makeText(this, "Updated", Toast.LENGTH_SHORT).show()
+        }.setNegativeButton("Cancel", null).show()
     }
 
-    private fun applyPreset(p: PresetConfig) {
-        currentPresetName = p.name
-        saveSettings(p.sni, p.endpointV4, p.endpointV6, p.dnsServers,
-            p.privateKey, p.endpointPubKey, p.deviceName,
-            p.jwt, p.license, p.token, p.accountId,
-            p.model, p.locale, p.userAgent, p.clientVersion, p.zeroTier)
-        loadSavedSettings(); updateUI()
-    }
+    private fun applyPreset(p: PresetConfig) { currentPresetName = p.name; saveSettings(p.sni, p.endpointV4, p.endpointV6, p.dnsServers, p.privateKey, p.endpointPubKey, p.deviceName, p.jwt, p.license, p.token, p.accountId, p.model, p.locale, p.userAgent, p.clientVersion, p.zeroTier); loadSavedSettings(); updateUI() }
 
     private fun loadSavedSettings() {
-        Usqueandroid.setSNI(getStr(KEY_SNI, DEFAULT_SNI))
-        getStr(KEY_ENDPOINT_V4, "").let { if (it.isNotEmpty()) Usqueandroid.setEndpointV4(it) }
-        getStr(KEY_ENDPOINT_V6, "").let { if (it.isNotEmpty()) Usqueandroid.setEndpointV6(it) }
-        getStr(KEY_PRIVATE_KEY, "").let { if (it.isNotEmpty()) Usqueandroid.setPrivateKey(it) }
-        getStr(KEY_ENDPOINT_PUBKEY, "").let { if (it.isNotEmpty()) Usqueandroid.setEndpointPublicKey(it) }
-        getStr(KEY_JWT, "").let { if (it.isNotEmpty()) Usqueandroid.setJWT(it) }
-        getStr(KEY_LICENSE, "").let { if (it.isNotEmpty()) Usqueandroid.setLicense(it) }
-        getStr(KEY_TOKEN, "").let { if (it.isNotEmpty()) Usqueandroid.setToken(it) }
-        getStr(KEY_ACCOUNT_ID, "").let { if (it.isNotEmpty()) Usqueandroid.setAccountID(it) }
-        Usqueandroid.setModel(getStr(KEY_MODEL, DEFAULT_MODEL))
-        Usqueandroid.setLocale(getStr(KEY_LOCALE, DEFAULT_LOCALE))
-        getStr(KEY_USER_AGENT, "").let { if (it.isNotEmpty()) Usqueandroid.setUserAgent(it) }
-        getStr(KEY_CLIENT_VERSION, "").let { if (it.isNotEmpty()) Usqueandroid.setClientVersion(it) }
-        Usqueandroid.setUseZeroTier(getBool(KEY_ZERO_TIER, false))
+        Usqueandroid.setSNI(getStr(KEY_SNI, DEFAULT_SNI)); getStr(KEY_ENDPOINT_V4, "").let { if (it.isNotEmpty()) Usqueandroid.setEndpointV4(it) }
+        getStr(KEY_ENDPOINT_V6, "").let { if (it.isNotEmpty()) Usqueandroid.setEndpointV6(it) }; getStr(KEY_PRIVATE_KEY, "").let { if (it.isNotEmpty()) Usqueandroid.setPrivateKey(it) }
+        getStr(KEY_ENDPOINT_PUBKEY, "").let { if (it.isNotEmpty()) Usqueandroid.setEndpointPublicKey(it) }; getStr(KEY_JWT, "").let { if (it.isNotEmpty()) Usqueandroid.setJWT(it) }
+        getStr(KEY_LICENSE, "").let { if (it.isNotEmpty()) Usqueandroid.setLicense(it) }; getStr(KEY_TOKEN, "").let { if (it.isNotEmpty()) Usqueandroid.setToken(it) }
+        getStr(KEY_ACCOUNT_ID, "").let { if (it.isNotEmpty()) Usqueandroid.setAccountID(it) }; Usqueandroid.setModel(getStr(KEY_MODEL, DEFAULT_MODEL))
+        Usqueandroid.setLocale(getStr(KEY_LOCALE, DEFAULT_LOCALE)); getStr(KEY_USER_AGENT, "").let { if (it.isNotEmpty()) Usqueandroid.setUserAgent(it) }
+        getStr(KEY_CLIENT_VERSION, "").let { if (it.isNotEmpty()) Usqueandroid.setClientVersion(it) }; Usqueandroid.setUseZeroTier(getBool(KEY_ZERO_TIER, false))
     }
 
-    private fun saveSettings(
-        sni: String, ep4: String, ep6: String, dns: String,
-        pk: String, pub: String, dev: String,
-        jwt: String, lic: String, tok: String, aid: String,
-        model: String = DEFAULT_MODEL,
-        locale: String = DEFAULT_LOCALE,
-        userAgent: String = "",
-        clientVersion: String = "",
-        zeroTier: Boolean = false
-    ) {
-        prefs.edit()
-            .putString(KEY_SNI, sni).putString(KEY_ENDPOINT_V4, ep4)
-            .putString(KEY_ENDPOINT_V6, ep6).putString(KEY_DNS, dns)
-            .putString(KEY_PRIVATE_KEY, pk).putString(KEY_ENDPOINT_PUBKEY, pub)
-            .putString(KEY_DEVICE_NAME, dev)
-            .putString(KEY_JWT, jwt).putString(KEY_LICENSE, lic)
-            .putString(KEY_TOKEN, tok).putString(KEY_ACCOUNT_ID, aid)
-            .putString(KEY_MODEL, model).putString(KEY_LOCALE, locale)
-            .putString(KEY_USER_AGENT, userAgent).putString(KEY_CLIENT_VERSION, clientVersion)
-            .putBoolean(KEY_ZERO_TIER, zeroTier)
-            .apply()
+    private fun saveSettings(sni: String, ep4: String, ep6: String, dns: String, pk: String, pub: String, dev: String, jwt: String, lic: String, tok: String, aid: String, model: String = DEFAULT_MODEL, locale: String = DEFAULT_LOCALE, userAgent: String = "", clientVersion: String = "", zeroTier: Boolean = false) {
+        prefs.edit().putString(KEY_SNI, sni).putString(KEY_ENDPOINT_V4, ep4).putString(KEY_ENDPOINT_V6, ep6).putString(KEY_DNS, dns).putString(KEY_PRIVATE_KEY, pk).putString(KEY_ENDPOINT_PUBKEY, pub).putString(KEY_DEVICE_NAME, dev).putString(KEY_JWT, jwt).putString(KEY_LICENSE, lic).putString(KEY_TOKEN, tok).putString(KEY_ACCOUNT_ID, aid).putString(KEY_MODEL, model).putString(KEY_LOCALE, locale).putString(KEY_USER_AGENT, userAgent).putString(KEY_CLIENT_VERSION, clientVersion).putBoolean(KEY_ZERO_TIER, zeroTier).apply()
     }
 
     private fun showSettingsDialog() {
         val v = layoutInflater.inflate(R.layout.dialog_settings, null)
-        val sni = v.findViewById<EditText>(R.id.sni_input)
-        val ep4 = v.findViewById<EditText>(R.id.endpoint_v4_input)
-        val ep6 = v.findViewById<EditText>(R.id.endpoint_v6_input)
-        val dns = v.findViewById<EditText>(R.id.dns_input)
-        val pk = v.findViewById<EditText>(R.id.private_key_input)
-        val pub = v.findViewById<EditText>(R.id.endpoint_pubkey_input)
-        val dev = v.findViewById<EditText>(R.id.device_name_input)
-        val jwt = v.findViewById<EditText>(R.id.jwt_input)
-        val lic = v.findViewById<EditText>(R.id.license_input)
-        val tok = v.findViewById<EditText>(R.id.token_input)
-        val aid = v.findViewById<EditText>(R.id.account_id_input)
-        val model = v.findViewById<EditText>(R.id.model_input)
-        val locale = v.findViewById<EditText>(R.id.locale_input)
-        val ua = v.findViewById<EditText>(R.id.user_agent_input)
-        val cv = v.findViewById<EditText>(R.id.client_version_input)
-        val zt = v.findViewById<Switch>(R.id.zero_tier_switch)
-        val rid = v.findViewById<TextView>(R.id.registered_device_id)
-        val rlic = v.findViewById<TextView>(R.id.registered_license)
-        val rpk = v.findViewById<TextView>(R.id.registered_pubkey)
-        val cp = configPath()
-
-        sni.setText(getStr(KEY_SNI, Usqueandroid.getSNI()))
-        ep4.setText(getStr(KEY_ENDPOINT_V4, Usqueandroid.getEndpointV4()))
-        ep6.setText(getStr(KEY_ENDPOINT_V6, Usqueandroid.getEndpointV6()))
-        dns.setText(getStr(KEY_DNS, DEFAULT_DNS))
-        pk.setText(getStr(KEY_PRIVATE_KEY, getRegStr("") { Usqueandroid.getPrivateKeyB64(it) }))
-        pub.setText(getStr(KEY_ENDPOINT_PUBKEY, getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }))
-        dev.setText(getStr(KEY_DEVICE_NAME, DEFAULT_DEVICE))
-        jwt.setText(getStr(KEY_JWT, "")); lic.setText(getStr(KEY_LICENSE, ""))
-        tok.setText(getStr(KEY_TOKEN, "")); aid.setText(getStr(KEY_ACCOUNT_ID, ""))
-        model.setText(getStr(KEY_MODEL, Usqueandroid.getModel()))
-        locale.setText(getStr(KEY_LOCALE, Usqueandroid.getLocale()))
-        ua.setText(getStr(KEY_USER_AGENT, Usqueandroid.getUserAgent()))
-        cv.setText(getStr(KEY_CLIENT_VERSION, Usqueandroid.getClientVersion()))
-        zt.isChecked = getBool(KEY_ZERO_TIER, Usqueandroid.getUseZeroTier())
-
-        if (Usqueandroid.isRegistered(cp)) {
-            rid.visibility = View.VISIBLE; rlic.visibility = View.VISIBLE
-            rpk.visibility = View.VISIBLE
-            rid.text = "DeviceID: " + getRegStr("(N/A)") { Usqueandroid.getDeviceID(it) }
-            rlic.text = "License: " + getRegStr("") { Usqueandroid.getLicense(it) }
-            rpk.text = "PubKey: " + getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }
-        }
+        val sni = v.findViewById<EditText>(R.id.sni_input); val ep4 = v.findViewById<EditText>(R.id.endpoint_v4_input); val ep6 = v.findViewById<EditText>(R.id.endpoint_v6_input)
+        val dns = v.findViewById<EditText>(R.id.dns_input); val pk = v.findViewById<EditText>(R.id.private_key_input); val pub = v.findViewById<EditText>(R.id.endpoint_pubkey_input)
+        val dev = v.findViewById<EditText>(R.id.device_name_input); val jwt = v.findViewById<EditText>(R.id.jwt_input); val lic = v.findViewById<EditText>(R.id.license_input)
+        val tok = v.findViewById<EditText>(R.id.token_input); val aid = v.findViewById<EditText>(R.id.account_id_input); val model = v.findViewById<EditText>(R.id.model_input)
+        val locale = v.findViewById<EditText>(R.id.locale_input); val ua = v.findViewById<EditText>(R.id.user_agent_input); val cv = v.findViewById<EditText>(R.id.client_version_input)
+        val zt = v.findViewById<Switch>(R.id.zero_tier_switch); val rid = v.findViewById<TextView>(R.id.registered_device_id); val rlic = v.findViewById<TextView>(R.id.registered_license)
+        val rpk = v.findViewById<TextView>(R.id.registered_pubkey); val cp = configPath()
+        sni.setText(getStr(KEY_SNI, Usqueandroid.getSNI())); ep4.setText(getStr(KEY_ENDPOINT_V4, Usqueandroid.getEndpointV4())); ep6.setText(getStr(KEY_ENDPOINT_V6, Usqueandroid.getEndpointV6()))
+        dns.setText(getStr(KEY_DNS, DEFAULT_DNS)); pk.setText(getStr(KEY_PRIVATE_KEY, getRegStr("") { Usqueandroid.getPrivateKeyB64(it) })); pub.setText(getStr(KEY_ENDPOINT_PUBKEY, getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }))
+        dev.setText(getStr(KEY_DEVICE_NAME, DEFAULT_DEVICE)); jwt.setText(getStr(KEY_JWT, "")); lic.setText(getStr(KEY_LICENSE, "")); tok.setText(getStr(KEY_TOKEN, "")); aid.setText(getStr(KEY_ACCOUNT_ID, ""))
+        model.setText(getStr(KEY_MODEL, Usqueandroid.getModel())); locale.setText(getStr(KEY_LOCALE, Usqueandroid.getLocale())); ua.setText(getStr(KEY_USER_AGENT, Usqueandroid.getUserAgent()))
+        cv.setText(getStr(KEY_CLIENT_VERSION, Usqueandroid.getClientVersion())); zt.isChecked = getBool(KEY_ZERO_TIER, Usqueandroid.getUseZeroTier())
+        if (Usqueandroid.isRegistered(cp)) { rid.visibility = View.VISIBLE; rlic.visibility = View.VISIBLE; rpk.visibility = View.VISIBLE; rid.text = "DeviceID: " + getRegStr("(N/A)") { Usqueandroid.getDeviceID(it) }; rlic.text = "License: " + getRegStr("") { Usqueandroid.getLicense(it) }; rpk.text = "PubKey: " + getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) } }
         v.findViewById<Button>(R.id.reenroll_button).setOnClickListener {
-            if (!Usqueandroid.isRegistered(cp)) {
-                Toast.makeText(this, "Register first", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            val dn = dev.text.toString().ifEmpty { DEFAULT_DEVICE }
-            thread {
-                val err = Usqueandroid.reEnroll(cp, dn, false)
-                runOnUiThread {
-                    if (err.isEmpty()) {
-                        Toast.makeText(this, "Re-Enrolled OK", Toast.LENGTH_SHORT).show()
-                        pk.setText(getRegStr("") { Usqueandroid.getPrivateKeyB64(it) })
-                        pub.setText(getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) })
-                        rpk.text = "PubKey: " + getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }
-                    } else Toast.makeText(this, "Fail: $err", Toast.LENGTH_LONG).show()
-                }
-            }
+            if (!Usqueandroid.isRegistered(cp)) { Toast.makeText(this, "Register first", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
+            thread { val err = Usqueandroid.reEnroll(cp, dev.text.toString().ifEmpty { DEFAULT_DEVICE }, false); runOnUiThread { if (err.isEmpty()) { Toast.makeText(this, "Re-Enrolled OK", Toast.LENGTH_SHORT).show(); pk.setText(getRegStr("") { Usqueandroid.getPrivateKeyB64(it) }); pub.setText(getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }); rpk.text = "PubKey: " + getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) } } else Toast.makeText(this, "Fail: $err", Toast.LENGTH_LONG).show() } }
         }
         v.findViewById<Button>(R.id.regen_key_button).setOnClickListener {
-            if (!Usqueandroid.isRegistered(cp)) {
-                Toast.makeText(this, "Register first", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            val dn = dev.text.toString().ifEmpty { DEFAULT_DEVICE }
-            thread {
-                val err = Usqueandroid.reEnroll(cp, dn, true)
-                runOnUiThread {
-                    if (err.isEmpty()) {
-                        Toast.makeText(this, "Regen + Enrolled OK", Toast.LENGTH_SHORT).show()
-                        pk.setText(getRegStr("") { Usqueandroid.getPrivateKeyB64(it) })
-                        pub.setText(getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) })
-                        rpk.text = "PubKey: " + getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }
-                    } else Toast.makeText(this, "Fail: $err", Toast.LENGTH_LONG).show()
-                }
-            }
+            if (!Usqueandroid.isRegistered(cp)) { Toast.makeText(this, "Register first", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
+            thread { val err = Usqueandroid.reEnroll(cp, dev.text.toString().ifEmpty { DEFAULT_DEVICE }, true); runOnUiThread { if (err.isEmpty()) { Toast.makeText(this, "Regen + Enrolled OK", Toast.LENGTH_SHORT).show(); pk.setText(getRegStr("") { Usqueandroid.getPrivateKeyB64(it) }); pub.setText(getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }); rpk.text = "PubKey: " + getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) } } else Toast.makeText(this, "Fail: $err", Toast.LENGTH_LONG).show() } }
         }
-        AlertDialog.Builder(this).setTitle("Settings").setView(v)
-            .setPositiveButton("Save") { _, _ ->
-                saveSettings(
-                    sni.text.toString(), ep4.text.toString(), ep6.text.toString(),
-                    dns.text.toString(),
-                    pk.text.toString().trim(), pub.text.toString().trim(),
-                    dev.text.toString(),
-                    jwt.text.toString().trim(), lic.text.toString().trim(),
-                    tok.text.toString().trim(), aid.text.toString().trim(),
-                    model.text.toString(), locale.text.toString(),
-                    ua.text.toString(), cv.text.toString(), zt.isChecked
-                )
-                loadSavedSettings()
-                Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show(); updateUI()
-                AlertDialog.Builder(this).setTitle("Save as preset?")
-                    .setMessage("Save current settings as a preset?")
-                    .setPositiveButton("Save") { _, _ ->
-                        showSavePresetDialog(
-                            sni.text.toString(), ep4.text.toString(), ep6.text.toString(),
-                            dns.text.toString(),
-                            pk.text.toString().trim(), pub.text.toString().trim(),
-                            dev.text.toString(),
-                            jwt.text.toString().trim(), lic.text.toString().trim(),
-                            tok.text.toString().trim(), aid.text.toString().trim(),
-                            model.text.toString(), locale.text.toString(),
-                            ua.text.toString(), cv.text.toString(), zt.isChecked
-                        )
-                    }.setNegativeButton("No", null).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .setNeutralButton("Export") { _, _ -> showExportDialog() }.show()
+        AlertDialog.Builder(this).setTitle("Settings").setView(v).setPositiveButton("Save") { _, _ ->
+            saveSettings(sni.text.toString(), ep4.text.toString(), ep6.text.toString(), dns.text.toString(), pk.text.toString().trim(), pub.text.toString().trim(), dev.text.toString(), jwt.text.toString().trim(), lic.text.toString().trim(), tok.text.toString().trim(), aid.text.toString().trim(), model.text.toString(), locale.text.toString(), ua.text.toString(), cv.text.toString(), zt.isChecked)
+            loadSavedSettings(); Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show(); updateUI()
+            AlertDialog.Builder(this).setTitle("Save as preset?").setMessage("Save current settings as a preset?").setPositiveButton("Save") { _, _ -> showSavePresetDialog(sni.text.toString(), ep4.text.toString(), ep6.text.toString(), dns.text.toString(), pk.text.toString().trim(), pub.text.toString().trim(), dev.text.toString(), jwt.text.toString().trim(), lic.text.toString().trim(), tok.text.toString().trim(), aid.text.toString().trim(), model.text.toString(), locale.text.toString(), ua.text.toString(), cv.text.toString(), zt.isChecked) }.setNegativeButton("No", null).show()
+        }.setNegativeButton("Cancel", null).setNeutralButton("Export") { _, _ -> showExportDialog() }.show()
     }
 
-    private fun showSavePresetDialog(
-        sni: String, ep4: String, ep6: String, dns: String,
-        pk: String, pub: String, dev: String,
-        jwt: String, lic: String, tok: String, aid: String,
-        model: String, locale: String,
-        userAgent: String, clientVersion: String, zeroTier: Boolean
-    ) {
+    private fun showSavePresetDialog(sni: String, ep4: String, ep6: String, dns: String, pk: String, pub: String, dev: String, jwt: String, lic: String, tok: String, aid: String, model: String, locale: String, userAgent: String, clientVersion: String, zeroTier: Boolean) {
         val input = EditText(this); input.hint = "Preset name (e.g. MyNode)"
-        AlertDialog.Builder(this).setTitle("Save Preset").setView(input)
-            .setPositiveButton("Save") { _, _ ->
-                val name = input.text.toString().trim()
-                if (name.isEmpty()) {
-                    Toast.makeText(this, "Name required", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                presets.removeAll { it.name == name }
-                presets.add(PresetConfig(
-                    name, sni, ep4, ep6, dns, pk, pub, dev,
-                    jwt, lic, tok, aid, model, locale, userAgent, clientVersion, zeroTier
-                ))
-                savePresets()
-                Toast.makeText(this, "Preset '$name' saved", Toast.LENGTH_SHORT).show()
-            }.setNegativeButton("Cancel", null).show()
+        AlertDialog.Builder(this).setTitle("Save Preset").setView(input).setPositiveButton("Save") { _, _ ->
+            val name = input.text.toString().trim(); if (name.isEmpty()) { Toast.makeText(this, "Name required", Toast.LENGTH_SHORT).show(); return@setPositiveButton }
+            presets.removeAll { it.name == name }; presets.add(PresetConfig(name, sni, ep4, ep6, dns, pk, pub, dev, jwt, lic, tok, aid, model, locale, userAgent, clientVersion, zeroTier)); savePresets(); Toast.makeText(this, "Preset '$name' saved", Toast.LENGTH_SHORT).show()
+        }.setNegativeButton("Cancel", null).show()
     }
 
     private fun showExportDialog() {
-        val cp = configPath()
-        val sb = StringBuilder().apply {
-            appendLine("=== Usque Config Export ===")
-            appendLine("SNI: " + getStr(KEY_SNI, Usqueandroid.getSNI()))
-            appendLine("IPv4: " + getStr(KEY_ENDPOINT_V4,
-                getRegStr("") { Usqueandroid.getDefaultEndpoint(it) }))
-            appendLine("IPv6: " + getStr(KEY_ENDPOINT_V6,
-                getRegStr("") { Usqueandroid.getAssignedIPv6(it) }))
-            appendLine("DNS: " + (getStr(KEY_DNS, DEFAULT_DNS)
-                ?: DEFAULT_DNS).replace("\n", ", "))
-            getRegStr("") { Usqueandroid.getPrivateKeyB64(it) }
-                .let { if (it.isNotEmpty()) appendLine("PrivateKey: $it") }
-            getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }
-                .let { if (it.isNotEmpty()) appendLine("PubKey: $it") }
-            getRegStr("") { Usqueandroid.getDeviceID(it) }
-                .let { if (it.isNotEmpty()) appendLine("DeviceID: $it") }
-            getRegStr("") { Usqueandroid.getLicense(it) }
-                .let { if (it.isNotEmpty()) appendLine("License: $it") }
-            appendLine("Model: " + getStr(KEY_MODEL, DEFAULT_MODEL))
-            appendLine("Locale: " + getStr(KEY_LOCALE, DEFAULT_LOCALE))
-            appendLine("ZeroTier: " + getBool(KEY_ZERO_TIER, false))
-            appendLine("JWT: " + getStr(KEY_JWT, "(none)"))
-            appendLine("============================")
-        }
-        val lv = TextView(this).apply {
-            text = sb.toString(); textSize = 11f
-            setTextColor(Color.parseColor("#e8ecf4"))
-            setBackgroundColor(Color.parseColor("#161b30"))
-            setPadding(24, 24, 24, 24)
-            movementMethod = ScrollingMovementMethod()
-            typeface = android.graphics.Typeface.MONOSPACE
-            setLineSpacing(4f, 1f)
-        }
-        AlertDialog.Builder(this).setTitle("Export Config").setView(lv)
-            .setPositiveButton("Copy") { _, _ ->
-                (getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
-                    .setPrimaryClip(android.content.ClipData.newPlainText("usque_config", sb.toString()))
-                Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
-            }
-            .setNeutralButton("Share") { _, _ ->
-                startActivity(Intent.createChooser(
-                    Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"; putExtra(Intent.EXTRA_TEXT, sb.toString())
-                    }, "Share Config"))
-            }
-            .setNegativeButton("Close", null).show()
+        val cp = configPath(); val sb = StringBuilder().apply { appendLine("=== Usque Config Export ==="); appendLine("SNI: " + getStr(KEY_SNI, Usqueandroid.getSNI())); appendLine("IPv4: " + getStr(KEY_ENDPOINT_V4, getRegStr("") { Usqueandroid.getDefaultEndpoint(it) })); appendLine("IPv6: " + getStr(KEY_ENDPOINT_V6, getRegStr("") { Usqueandroid.getAssignedIPv6(it) })); appendLine("DNS: " + (getStr(KEY_DNS, DEFAULT_DNS) ?: DEFAULT_DNS).replace("\n", ", ")); getRegStr("") { Usqueandroid.getPrivateKeyB64(it) }.let { if (it.isNotEmpty()) appendLine("PrivateKey: $it") }; getRegStr("") { Usqueandroid.getEndpointPubKeyPEM(it) }.let { if (it.isNotEmpty()) appendLine("PubKey: $it") }; getRegStr("") { Usqueandroid.getDeviceID(it) }.let { if (it.isNotEmpty()) appendLine("DeviceID: $it") }; getRegStr("") { Usqueandroid.getLicense(it) }.let { if (it.isNotEmpty()) appendLine("License: $it") }; appendLine("Model: " + getStr(KEY_MODEL, DEFAULT_MODEL)); appendLine("Locale: " + getStr(KEY_LOCALE, DEFAULT_LOCALE)); appendLine("ZeroTier: " + getBool(KEY_ZERO_TIER, false)); appendLine("JWT: " + getStr(KEY_JWT, "(none)")); appendLine("============================") }
+        val lv = TextView(this).apply { text = sb.toString(); textSize = 11f; setTextColor(Color.parseColor("#e8ecf4")); setBackgroundColor(Color.parseColor("#161b30")); setPadding(24, 24, 24, 24); movementMethod = ScrollingMovementMethod(); typeface = android.graphics.Typeface.MONOSPACE; setLineSpacing(4f, 1f) }
+        AlertDialog.Builder(this).setTitle("Export Config").setView(lv).setPositiveButton("Copy") { _, _ -> (getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager).setPrimaryClip(android.content.ClipData.newPlainText("usque_config", sb.toString())); Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show() }.setNeutralButton("Share") { _, _ -> startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, sb.toString()) }, "Share Config")) }.setNegativeButton("Close", null).show()
     }
 
-    private fun startVpn() {
-        val intent = VpnService.prepare(this)
-        if (intent != null) startActivityForResult(intent, VPN_REQUEST_CODE)
-        else onVpnPermissionGranted()
-    }
-
-    private fun stopVpn() {
-        UsqueVpnService.stop()
-        val i = Intent(this, UsqueVpnService::class.java)
-        i.action = UsqueVpnService.ACTION_DISCONNECT
-        startService(i)
-        connectButton.postDelayed({ updateUI() }, 1000)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VPN_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) onVpnPermissionGranted()
-            else Toast.makeText(this, "VPN permission denied", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun onVpnPermissionGranted() {
-        startService(Intent(this, UsqueVpnService::class.java))
-        handler.postDelayed({ updateUI(); fetchIpLocation() }, 3500)
-    }
+    private fun startVpn() { val intent = VpnService.prepare(this); if (intent != null) startActivityForResult(intent, VPN_REQUEST_CODE) else onVpnPermissionGranted() }
+    private fun stopVpn() { UsqueVpnService.stop(); val i = Intent(this, UsqueVpnService::class.java); i.action = UsqueVpnService.ACTION_DISCONNECT; startService(i); connectButton.postDelayed({ updateUI() }, 1000) }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) { super.onActivityResult(requestCode, resultCode, data); if (requestCode == VPN_REQUEST_CODE) { if (resultCode == RESULT_OK) onVpnPermissionGranted() else Toast.makeText(this, "VPN permission denied", Toast.LENGTH_SHORT).show() } }
+    private fun onVpnPermissionGranted() { startService(Intent(this, UsqueVpnService::class.java)); handler.postDelayed({ updateUI(); fetchIpLocation() }, 3500) }
 
     private fun updateUI() {
         if (UsqueVpnService.isRunning) {
-            connectButton.text = "断开"; connectButton.isSelected = true
-            statusText.text = "已连接"
-            statusText.setTextColor(Color.parseColor("#00d4aa"))
-            infoRow.visibility = View.VISIBLE; speedRow.visibility = View.VISIBLE
-            startSpeedUpdater(); startLatencyUpdater(); startDurationUpdater()
-            currentPresetText.text = currentPresetName ?: ""
+            connectButton.text = "断开"; connectButton.isSelected = true; statusText.text = "已连接"; statusText.setTextColor(Color.parseColor("#00d4aa"))
+            infoRow.visibility = View.VISIBLE; speedRow.visibility = View.VISIBLE; startSpeedUpdater(); startLatencyUpdater(); startDurationUpdater(); currentPresetText.text = currentPresetName ?: ""
         } else {
-            connectButton.text = "连接"; connectButton.isSelected = false
-            statusText.text = "未连接"
-            statusText.setTextColor(Color.parseColor("#636e84"))
-            infoRow.visibility = View.GONE; speedRow.visibility = View.GONE
-            latencyText.text = "-- ms"
-            countryText.text = String(Character.toChars(0x1F310))
-            countryLabel.text = "--"; exitIpText.text = "--"
-            toolbarFlag.text = "\uD83C\uDF10"; toolbarLocation.text = "位置"
-            totalDataText.text = "0 B"; currentPresetText.text = ""
-            stopSpeedUpdater(); stopLatencyUpdater(); stopDurationUpdater()
-            lastRx = 0; lastTx = 0; lastSpeedTime = 0
-            countryCode = ""; countryName = ""
+            connectButton.text = "连接"; connectButton.isSelected = false; statusText.text = "未连接"; statusText.setTextColor(Color.parseColor("#636e84"))
+            infoRow.visibility = View.GONE; speedRow.visibility = View.GONE; latencyText.text = "-- ms"; countryText.text = String(Character.toChars(0x1F310)); countryLabel.text = "--"
+            exitIpText.text = "--"; toolbarFlag.text = "\uD83C\uDF10"; toolbarLocation.text = "位置"; totalDataText.text = "0 B"; currentPresetText.text = ""
+            stopSpeedUpdater(); stopLatencyUpdater(); stopDurationUpdater(); lastRx = 0; lastTx = 0; lastSpeedTime = 0; countryCode = ""; countryName = ""
         }
     }
 }
