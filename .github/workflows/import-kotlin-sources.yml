@@ -12,23 +12,26 @@ jobs:
       - name: Checkout current repo
         uses: actions/checkout@v4
 
-      - name: Download Kotlin source files
+      - name: Download and place Kotlin files
         run: |
+          set -ex
           BASE="https://raw.githubusercontent.com/obrige/usque-android/160bc27"
-          DIR="android/usque-vpn/app/src/main/kotlin/com/abobo/usque"
-          mkdir -p "$DIR"
-          curl -sL "$BASE/$DIR/MainActivity.kt" -o "$DIR/MainActivity.kt"
-          curl -sL "$BASE/$DIR/UsqueVpnService.kt" -o "$DIR/UsqueVpnService.kt"
-          echo "=== Downloaded files ==="
-          ls -la "$DIR/"
-          wc -l "$DIR/"*.kt
+          DST="android/usque-vpn/app/src/main/kotlin/com/abobo/usque"
+          mkdir -p "$DST"
+          wget -q "$BASE/$DST/MainActivity.kt" -O "$DST/MainActivity.kt"
+          wget -q "$BASE/$DST/UsqueVpnService.kt" -O "$DST/UsqueVpnService.kt"
+          echo "=== Files ==="
+          ls -la "$DST/"
+          wc -l "$DST/"*.kt
+          head -3 "$DST/MainActivity.kt"
 
       - name: Commit and push
         run: |
+          set -ex
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
           git add -A
           git status
-          git diff --staged --stat
-          git commit -m "fix: import missing Kotlin sources from original repo"
-          git push
+          git diff --cached --stat
+          git commit -m "fix: import Kotlin sources (MainActivity + UsqueVpnService)"
+          git push origin main
