@@ -290,23 +290,7 @@ class UsqueVpnService : VpnService() {
         finally { try { client.close() } catch (_: Exception) {} }
     }
 
-    // ═══════════════════════════════════════════
-    //  通知 / 网速 / 国旗
-    // ═══════════════════════════════════════════
-    private fun flagEmoji(code: String): String {
-        if (code.length != 2) return ""
-        return try {
-            String(Character.toChars(0x1F1E6 + (code[0] - 'A'))) +
-            String(Character.toChars(0x1F1E6 + (code[1] - 'A')))
-        } catch (_: Exception) { "" }
-    }
-
     private fun buildNotification(status: String): Notification {
-        val flag = flagEmoji(MainActivity.countryCode)
-        val location = MainActivity.countryName
-        val title = if (flag.isNotEmpty()) "$flag Usque" else "Usque"
-        val content = if (location.isNotEmpty()) "$location · $status" else status
-
         val pi = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java).apply {
@@ -321,8 +305,8 @@ class UsqueVpnService : VpnService() {
         )
 
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(content)
+            .setContentTitle("Usque")
+            .setContentText(status)
             .setSmallIcon(android.R.drawable.ic_menu_share)
             .setContentIntent(pi)
             .setOngoing(true)
