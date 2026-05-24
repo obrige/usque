@@ -7,6 +7,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Bundle
 import android.os.Handler
@@ -191,14 +194,64 @@ class MainActivity : Activity() {
     }
 
     // ═══════════════════════════════════════════
-    //  IP 查询 — 代理优先 → 直连 → endpoint fallback
+    //  找 VPN Network（绕过 addDisallowedApplication）
+    // ═══════════════════════════════════════════
+    private fun findVpnNetwork(): Network? {
+        try {
+            val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            for (net in cm.allNetworks) {
+                val caps = cm.getNetworkCapabilities(net)
+                if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) {
+                    return net
+                }
+            }
+        } catch (_: Exception) { }
+        return null
+    }
+
+    // ═══════════════════════════════════════════
+    //  通过指定 Network 发起 HTTP GET（绑定 VPN 网卡，欺骗系统以为是隧道内流量）
+    // ═══════════════════════════════════════════
+    private fun httpGetViaNetwork(urlStr: String, network: Network): String? {
+        val url = URL(urlStr)
+        val conn = network.openConnection(url) as HttpURLConnection
+        conn.connectTimeout = 10000
+        conn.readTimeout = 10000
+        conn.requestMethod = "GET"
+        conn.setRequestProperty("User-Agent", "Usque/1.0")
+        return if (conn.responseCode == 200) {
+            conn.inputStream.bufferedReader().readText().also { conn.disconnect() }
+        } else {
+            conn.disconnect(); null
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    //  IP 查询 — VPN Network 直绑 → 代理 → 直连 → endpoint
     // ═══════════════════════════════════════════
     private fun fetchIpLocation() {
         thread {
             var success = false
-            // 第 1 步：走 localhost 代理 (58080)
-            if (UsqueVpnService.proxyReady) {
-                for (attempt in 1..3) {
+            // 第 1 步：直接绑 VPN Network 查出口 IP（绕过 addDisallowedApplication）
+            if (UsqueVpnService.isRunning) {
+                val vpnNet = findVpnNetwork()
+                if (vpnNet != null) {
+                    for (attempt in 1..3) {
+                        try {
+                            val json = httpGetViaNetwork(IP_CHECK_URL, vpnNet)
+                            if (json != null) {
+                                applyGeoJson(json)
+                                success = true
+                                break
+                            }
+                        } catch (_: Exception) { }
+                        if (attempt < 3) Thread.sleep(1500)
+                    }
+                }
+            }
+            // 第 2 步：走 localhost 代理 (58080)
+            if (!success && UsqueVpnService.proxyReady) {
+                for (attempt in 1..2) {
                     try {
                         val json = httpGet(IP_CHECK_URL, viaProxy = true)
                         if (json != null) {
@@ -207,10 +260,10 @@ class MainActivity : Activity() {
                             break
                         }
                     } catch (_: Exception) { }
-                    if (attempt < 3) Thread.sleep(1500)
+                    if (attempt < 2) Thread.sleep(1500)
                 }
             }
-            // 第 2 步：直连
+            // 第 3 步：直连
             if (!success) {
                 for (attempt in 1..2) {
                     try {
@@ -224,7 +277,7 @@ class MainActivity : Activity() {
                     if (attempt < 2) Thread.sleep(1000)
                 }
             }
-            // 第 3 步：用 endpoint IP 查 ip-api.com
+            // 第 4 步：用 endpoint IP 查 ip-api.com
             if (!success) fetchGeoByEndpoint()
         }
     }
