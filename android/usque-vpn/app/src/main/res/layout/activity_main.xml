@@ -18,7 +18,10 @@
         android:gravity="center_vertical"
         android:paddingStart="20dp"
         android:paddingEnd="12dp"
-        android:paddingTop="12dp">
+        android:paddingTop="18dp"
+        android:paddingBottom="8dp"
+        android:minHeight="56dp"
+        android:background="#080c1a">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -32,22 +35,23 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🌐"
-                android:textSize="22sp" />
+                android:textSize="28sp" />
 
             <TextView
                 android:id="@+id/toolbar_location"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="位置"
-                android:textSize="13sp"
-                android:textColor="#8892b0"
-                android:layout_marginStart="8dp" />
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textColor="#e8ecf4"
+                android:layout_marginStart="10dp" />
         </LinearLayout>
 
         <ImageButton
             android:id="@+id/log_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:src="@android:drawable/ic_menu_info_details"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="日志"
@@ -55,8 +59,8 @@
 
         <ImageButton
             android:id="@+id/settings_icon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:src="@android:drawable/ic_menu_manage"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="设置"
@@ -76,11 +80,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="USQUE"
-            android:textSize="13sp"
+            android:textSize="14sp"
+            android:textStyle="bold"
             android:textColor="#4a5578"
-            android:letterSpacing="0.35"
             android:layout_marginBottom="36dp"
-            android:fontFamily="monospace" />
+            android:fontFamily="sans-serif" />
 
         <RelativeLayout
             android:layout_width="140dp"
@@ -142,7 +146,7 @@
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="72dp"
+                    android:layout_height="80dp"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -154,22 +158,23 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="🌐"
-                        android:textSize="26sp" />
+                        android:textSize="30sp" />
                     <TextView
                         android:id="@+id/country_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="11sp"
-                        android:textColor="#8892b0"
-                        android:layout_marginTop="4dp"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="#e8ecf4"
+                        android:layout_marginTop="6dp"
                         android:maxLines="1"
                         android:ellipsize="end" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="72dp"
+                    android:layout_height="80dp"
                     android:layout_weight="1.2"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -181,8 +186,9 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="13sp"
-                        android:textColor="#e8ecf4"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="#00d4aa"
                         android:fontFamily="monospace" />
                     <TextView
                         android:layout_width="wrap_content"
@@ -190,7 +196,7 @@
                         android:text="出口 IP"
                         android:textSize="10sp"
                         android:textColor="#4a5578"
-                        android:layout_marginTop="4dp" />
+                        android:layout_marginTop="6dp" />
                 </LinearLayout>
             </LinearLayout>
 
@@ -201,7 +207,7 @@
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="56dp"
+                    android:layout_height="60dp"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -213,7 +219,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="-- ms"
-                        android:textSize="15sp"
+                        android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="#e8ecf4" />
                     <TextView
@@ -222,12 +228,12 @@
                         android:text="延迟"
                         android:textSize="10sp"
                         android:textColor="#4a5578"
-                        android:layout_marginTop="2dp" />
+                        android:layout_marginTop="3dp" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="56dp"
+                    android:layout_height="60dp"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -240,7 +246,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="IPv4"
-                        android:textSize="15sp"
+                        android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="#e8ecf4" />
                     <TextView
@@ -249,12 +255,12 @@
                         android:text="协议"
                         android:textSize="10sp"
                         android:textColor="#4a5578"
-                        android:layout_marginTop="2dp" />
+                        android:layout_marginTop="3dp" />
                 </LinearLayout>
 
                 <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="56dp"
+                    android:layout_height="60dp"
                     android:layout_weight="1"
                     android:orientation="vertical"
                     android:gravity="center"
@@ -275,7 +281,7 @@
                         android:text="流量"
                         android:textSize="10sp"
                         android:textColor="#4a5578"
-                        android:layout_marginTop="2dp" />
+                        android:layout_marginTop="3dp" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
