@@ -43,7 +43,6 @@ class UsqueVpnService : VpnService() {
         var totalRx = 0L
         var totalTx = 0L
         @Volatile var proxyReady = false
-        @Volatile var exitIp: String = ""
     }
 
     private var vpnInterface: ParcelFileDescriptor? = null
@@ -112,10 +111,6 @@ class UsqueVpnService : VpnService() {
         }
         val vpnIpv6 = Usqueandroid.getAssignedIPv6(configPath)
 
-        // ★ 先把 endpoint IP 存好，供 MainActivity 做 geo 查询
-        exitIp = prefs.getString("endpoint_v4",
-            Usqueandroid.getDefaultEndpoint(configPath)) ?: ""
-
         try {
             val builder = Builder().setSession("Usque").setMtu(1280)
             builder.addAddress(vpnIpv4, 32)
@@ -132,7 +127,7 @@ class UsqueVpnService : VpnService() {
             ) ?: "8.8.8.8\n8.8.4.4"
             dnsStr.lines().map { it.trim() }.filter { it.isNotBlank() }
                 .forEach { try { builder.addDnsServer(it) } catch (_: Exception) {} }
-            builder.addDisallowedApplication(packageName)
+            // ★ 不排除自身 — App HTTP/Socket 全走 VPN 隧道
             vpnInterface = builder.establish() ?: run {
                 stopSelf()
                 return START_NOT_STICKY
@@ -189,14 +184,12 @@ class UsqueVpnService : VpnService() {
                 for (net in cm.allNetworks) {
                     val caps = cm.getNetworkCapabilities(net)
                     if (caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true) {
-                        Log.i(TAG, "找到 VPN Network: $net")
                         return net
                     }
                 }
             } catch (_: Exception) { }
             if (attempt < 6) Thread.sleep(600)
         }
-        Log.w(TAG, "未找到 VPN Network")
         return null
     }
 
@@ -207,7 +200,7 @@ class UsqueVpnService : VpnService() {
                 server.reuseAddress = true
                 server.bind(InetSocketAddress("127.0.0.1", PROXY_PORT))
                 proxyReady = true
-                Log.i(TAG, "HTTP 代理已在 127.0.0.1:$PROXY_PORT 启动")
+                Log.i(TAG, "HTTP 代理已启动 127.0.0.1:$PROXY_PORT")
                 while (isRunning) {
                     try {
                         val client = server.accept()
@@ -240,10 +233,8 @@ class UsqueVpnService : VpnService() {
 
             val url = URL(target)
             val conn: HttpURLConnection = if (vpnNetwork != null) {
-                Log.d(TAG, "代理请求走 VPN Network: $target")
                 vpnNetwork!!.openConnection(url) as HttpURLConnection
             } else {
-                Log.d(TAG, "代理请求走直连: $target")
                 url.openConnection() as HttpURLConnection
             }
             conn.connectTimeout = 10000
@@ -264,11 +255,8 @@ class UsqueVpnService : VpnService() {
             writer.write(body)
             writer.flush()
             conn.disconnect()
-        } catch (e: Exception) {
-            Log.e(TAG, "代理请求失败: ${e.message}")
-        } finally {
-            try { client.close() } catch (_: Exception) {}
-        }
+        } catch (_: Exception) { }
+        finally { try { client.close() } catch (_: Exception) {} }
     }
 
     private fun flagEmoji(code: String): String {
@@ -361,7 +349,6 @@ class UsqueVpnService : VpnService() {
         try { vpnInterface?.close() } catch (_: Exception) {}
         vpnInterface = null
         vpnNetwork = null
-        exitIp = ""
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
         totalRx = 0L
