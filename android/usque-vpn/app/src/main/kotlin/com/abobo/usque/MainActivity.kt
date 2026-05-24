@@ -258,12 +258,12 @@ class MainActivity : Activity() {
                     if (lastSpeedTime > 0) {
                         val e = (n - lastSpeedTime) / 1000.0
                         if (e > 0) {
-                            speedDownText.text = fmt(((rx - lastRx) / e).toLong()) + "/s"
-                            speedUpText.text = fmt(((tx - lastTx) / e).toLong()) + "/s"
+                            speedDownText.text = fmt(((tx - lastTx) / e).toLong()) + "/s"
+                            speedUpText.text = fmt(((rx - lastRx) / e).toLong()) + "/s"
                         }
                     }
                     lastRx = rx; lastTx = tx; lastSpeedTime = n
-                    totalDataText.text = "↓" + fmtCompact(rx) + "\n↑" + fmtCompact(tx)
+                    totalDataText.text = "↓" + fmtCompact(tx) + "\n↑" + fmtCompact(rx)
                 }
                 handler.postDelayed(this, 1000)
             }
