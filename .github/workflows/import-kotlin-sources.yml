@@ -1,0 +1,29 @@
+name: Import Missing Kotlin Sources
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+
+      - name: Clone original repo
+        run: git clone --depth 1 https://github.com/obrige/usque-android.git /tmp/original
+
+      - name: Copy missing Kotlin sources
+        run: |
+          mkdir -p android/usque-vpn/app/src/main/kotlin
+          cp -r /tmp/original/android/usque-vpn/app/src/main/kotlin/* android/usque-vpn/app/src/main/kotlin/
+
+      - name: Commit and push
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+          git add -A
+          git diff --staged --quiet || git commit -m "fix: import missing Kotlin sources from original repo"
+          git push
