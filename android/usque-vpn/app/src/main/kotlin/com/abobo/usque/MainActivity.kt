@@ -179,8 +179,11 @@ class MainActivity : Activity() {
             val v4 = getRegStr("") { Usqueandroid.getAssignedIPv4(it) }
             val v6 = getRegStr("") { Usqueandroid.getAssignedIPv6(it) }
             val sb = StringBuilder()
-            if (v4.isNotEmpty()) sb.append("IPv4: $v4  ")
-            if (v6.isNotEmpty()) sb.append("IPv6: $v6")
+            if (v4.isNotEmpty()) sb.append("IPv4: $v4")
+            if (v6.isNotEmpty()) {
+                if (sb.isNotEmpty()) sb.append("\n")
+                sb.append("IPv6: $v6")
+            }
             registeredInfoText.text = sb.toString().ifEmpty { "" }
         } else {
             registeredInfoText.text = ""
