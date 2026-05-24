@@ -48,7 +48,7 @@ class MainActivity : Activity() {
         private const val DEFAULT_DNS = "8.8.8.8\n8.8.4.4\n9.9.9.9\n149.112.112.112"
         private const val DEFAULT_DEVICE = "Pixel 10"
         private const val DEFAULT_SNI = "cdnjs.cloudflare.com"
-        private const val DEFAULT_MODEL = "PC"
+        private const val DEFAULT_MODEL = "Android"
         private const val DEFAULT_LOCALE = "en_US"
 
         val ENDPOINT_V4_PRESETS = arrayOf(
