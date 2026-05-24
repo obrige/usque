@@ -335,12 +335,11 @@ func StartProxy(configPath, mode, bindAddr string, port int, username, password 
 	} else {
 		epStr = DefaultEndpointV4Options[0]
 	}
-	host, port, err := parseEndpoint(epStr)
+	host, epPort, err := parseEndpoint(epStr)
 	if err != nil {
-		return fmt.Sprintf("endpoint parse: %v", err)
+	    return fmt.Sprintf("endpoint parse: %v", err)
 	}
-	endpoint := &net.UDPAddr{IP: net.ParseIP(host), Port: port}
-
+	endpoint := &net.UDPAddr{IP: net.ParseIP(host), Port: epPort}
 	ctx, cancel := context.WithCancel(context.Background())
 	proxyCancel = cancel
 	go api.MaintainTunnel(ctx, tlsCfg, 30*time.Second, 1242, endpoint,
