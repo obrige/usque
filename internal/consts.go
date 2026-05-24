@@ -7,7 +7,7 @@ const (
 	// unused for now
 	ZeroTierSNI   = "zt-masque.cloudflareclient.com"
 	ConnectURI    = "https://cloudflareaccess.com"
-	DefaultModel  = "PC"
+	DefaultModel  = "Android"
 	KeyTypeWg     = "curve25519"
 	TunTypeWg     = "wireguard"
 	KeyTypeMasque = "secp256r1"
