@@ -2,14 +2,15 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
         <shape android:shape="oval">
-            <solid android:color="#d97015" />
-            <size android:width="88dp" android:height="88dp" />
+            <gradient android:startColor="#00b894" android:endColor="#008866" android:type="radial" android:gradientRadius="70dp" />
+            <size android:width="100dp" android:height="100dp" />
         </shape>
     </item>
     <item>
         <shape android:shape="oval">
-            <solid android:color="#f6821f" />
-            <size android:width="88dp" android:height="88dp" />
+            <gradient android:startColor="#00d4aa" android:endColor="#00997a" android:type="radial" android:gradientRadius="70dp" />
+            <size android:width="100dp" android:height="100dp" />
+            <stroke android:width="2dp" android:color="#40ffffff" />
         </shape>
     </item>
 </selector>
